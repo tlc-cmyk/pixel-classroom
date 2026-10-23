@@ -18,13 +18,14 @@ GitHub Pages：https://tlc-cmyk.github.io/pixel-classroom/
 - CSS：`100vw` × `100dvh`／`100svh`，含 `safe-area-inset`
 - 桌面寬螢幕：居中直式機框預覽
 - 圖集：`assets/atlas.png` + `assets/atlas.json`（本地載入，無 CDN）
+- 直式下可短暫顯示「橫放」提示；4×4 座位已按直式可讀優化
 
-## 直式課室佈局
+## 課室佈局（4×4）
 
-1. **講授區** — 白板、講桌
-2. **電腦區** — 2×3 電腦桌
-3. **討論區** — 地毯＋小組座位
-4. **儲物區** — 書架、櫃、影印機
+1. **講台** — 白板、講桌、窗戶／門；玩家扮演老師
+2. **課室座位** — **4×4 = 16 張學生枱**，中央走道；每枱有椅、檯、螢幕
+3. **16 位同學** — 全部坐下（Pixel Office 角色臉／衣著）
+4. **後排** — 書架、沙發、影印機、貓
 
 ## 觸控（手機優先）
 
@@ -35,13 +36,13 @@ GitHub Pages：https://tlc-cmyk.github.io/pixel-classroom/
 | 右下「互動／關閉」 | 開／關區域資訊 |
 | 點擊區域 | 顯示資訊卡 |
 | WASD／方向鍵 | 移動 |
-| 1–4／E／Esc | 區域、互動、關閉 |
+| 1–2／E／Esc | 區域、互動、關閉 |
 
 ## 角色與移動
 
-- **角色臉與衣著**來自 CC0 Pixel Office 圖集（非程序醜臉）
+- **角色臉與衣著**來自 CC0 Pixel Office 圖集
 - **四向面向** + walk／idle；步行幀與位移同步
-- **AABB 碰撞**：腳底盒 vs 傢俬底座；X／Y 分離
+- **AABB 碰撞**：腳底盒 vs 書枱／講桌底座；X／Y 分離
 - **鏡頭**：360×640 軟跟隨老師
 
 ## 素材來源與授權（全部可商用／可再分發）
@@ -53,14 +54,13 @@ GitHub Pages：https://tlc-cmyk.github.io/pixel-classroom/
 | [Pixel Office Asset Pack](https://2dpig.itch.io/pixel-office) | 2dPig | **CC0** | 傢俬、電腦、角色臉、貓狗 |
 | [Roguelike Indoor Pack](https://opengameart.org/content/roguelike-indoor-pack) | Kenney | **CC0** | 補充室內傢俬／植物 |
 | [indoor office appliances](https://opengameart.org/content/indoor-office-appliances) | semtex99 | **CC0** | 顯示器、櫃、書架道具 |
-| [16x16 base sprites](https://opengameart.org/content/16x16-base-sprites) | Unnamed (OGA) | **CC0** | （舊方案參考；現行步行以 Pixel Office 全身＋腿位移為主） |
 
 授權檔副本：`assets/vendor-licenses/`。原始下載暫存：`vendor/src/`（可選，不影響執行）。
 
 ## 技術
 
 - 靜態 SPA：`index.html` + `assets/`
-- 適合 GitHub Pages 根目錄部署
+- 適合 GitHub Pages 根目錄部署（`main`）
 - 繁體中文 UI；離線可玩
 
 ## 限制

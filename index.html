@@ -45,7 +45,6 @@
     background: #120c08;
     cursor: crosshair;
   }
-  /* D-pad — bottom-left, thumb zone */
   #dpad {
     display: none;
     position: absolute;
@@ -89,7 +88,6 @@
     border-radius: 50%; opacity: 0.4; pointer-events: none;
     font-size: 12px; border-style: dashed;
   }
-  /* Action cluster — bottom-right */
   #actions {
     display: none;
     position: absolute;
@@ -132,7 +130,23 @@
     border-color: #c87858;
     background: linear-gradient(180deg, rgba(90,40,28,0.94), rgba(50,22,16,0.94));
   }
-  /* Desktop: keep aspect, centered, no forced letterbox waste on phone */
+  #rotateHint {
+    display: none;
+    position: absolute;
+    left: 50%;
+    top: 10px;
+    transform: translateX(-50%);
+    z-index: 12;
+    background: rgba(26,32,48,0.92);
+    color: #f0c14b;
+    border: 2px solid #c49a6c;
+    border-radius: 10px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: bold;
+    pointer-events: none;
+    white-space: nowrap;
+  }
   @media (min-width: 700px) and (hover: hover) and (pointer: fine) {
     html, body {
       display: flex;
@@ -160,6 +174,7 @@
 <body>
 <div id="wrap">
 <canvas id="game" width="360" height="640"></canvas>
+<div id="rotateHint">橫放手機可睇更清楚課桌</div>
 <div id="dpad" aria-hidden="true">
   <div class="btn up" data-dir="up">▲</div>
   <div class="btn left" data-dir="left">◀</div>
@@ -173,7 +188,6 @@
 </div>
 </div>
 <script>
-
 (function () {
   "use strict";
   const W = 360, H = 640;
@@ -203,8 +217,8 @@
   function blitTiled(name, dx, dy, dw, dh) {
     const s = SPR[name];
     if (!s || !atlasReady) return;
-    const x0 = (dx+0.5)|0, y0 = (dy+0.5)|0;
-    const x1 = x0 + ((dw+0.5)|0), y1 = y0 + ((dh+0.5)|0);
+    const x0 = (dx + 0.5) | 0, y0 = (dy + 0.5) | 0;
+    const x1 = x0 + ((dw + 0.5) | 0), y1 = y0 + ((dh + 0.5) | 0);
     for (let y = y0; y < y1; y += s.h) {
       for (let x = x0; x < x1; x += s.w) {
         const tw = Math.min(s.w, x1 - x);
@@ -216,18 +230,23 @@
 
   const C = {
     bg: "#121820",
+    sky: "#4aa0e8",
+    skyCloud: "#f4f8ff",
+    wall: "#f2f0ea",
+    wallLine: "#d0ccc4",
+    wallBase: "#e8c86a",
+    floorA: "#41a6f6",
+    floorB: "#3590dc",
+    floorHi: "#73eff7",
     ui: "#f4f7ff", uiDim: "#90a0b8",
     uiPanel: "#1a2438", uiPanelMid: "#243048", uiPanelBorder: "#8aa0c0",
     uiAccent: "#f0c14b",
     titleGold: "#f0c14b", titleCream: "#f4f7ff",
     highlight: "rgba(240,193,75,0.28)",
-    zoneTint1: "rgba(46,120,90,0.14)",
-    zoneTint2: "rgba(50,110,180,0.14)",
-    zoneTint3: "rgba(200,100,70,0.12)",
-    zoneTint4: "rgba(120,90,160,0.14)",
+    zoneTint1: "rgba(46,120,90,0.12)",
+    zoneTint2: "rgba(50,110,180,0.10)",
     zoneLabel: "#1a2438",
     overlay: "rgba(10,14,22,0.88)",
-    chalk: "#1a2438", chalkY: "#c04040",
   };
 
   const STATE = { TITLE: 0, PLAY: 1 };
@@ -237,93 +256,102 @@
   let highlightZone = -1;
   let highlightTimer = 0;
 
-  const BAR_H = 56;
-  /* Pixel Office scene placed under top UI */
-  const SCENE_X = 10, SCENE_Y = 32;
-  const SCENE_W = 340, SCENE_H = 297;
-  const room = {
-    x: SCENE_X, y: SCENE_Y,
-    w: SCENE_W, h: SCENE_H + 160, /* scene + storage extension */
-  };
+  const BAR_H = 52;
+  const TOP_H = 28;
+
+  /* Classroom world — portrait 360 wide, scrollable height */
+  const ROOM = { x: 0, y: TOP_H, w: 360, h: 470 };
+
+  /* 4×4 desk grid with center aisle */
+  const DESK_W = 68, DESK_H = 52;
+  const COL_X = [18, 92, 200, 274];
+  const ROW_Y = [128, 192, 256, 320];
+  const SPRITE_CYCLE = ["student0", "student1", "student4", "student2", "student3", "student5"];
+  const CHAIR_CYCLE = ["chair0", "chair1", "chair2", "chair3", "chair4", "chair5"];
+
+  const desks = [];
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 4; c++) {
+      const i = r * 4 + c;
+      desks.push({
+        i, r, c,
+        x: COL_X[c],
+        y: ROW_Y[r],
+        w: DESK_W,
+        h: DESK_H,
+        chair: CHAIR_CYCLE[i % CHAIR_CYCLE.length],
+        table: "table0",
+      });
+    }
+  }
+
+  const teacherDesk = { x: 130, y: 78, w: 100, h: 36 };
 
   const zones = [
-    { id: 0, name: "講授區", key: "1",
-      x: SCENE_X + 90, y: SCENE_Y + 40, w: 160, h: 55,
-      info: "白板／正門講解 · 今日課題：數據庫基礎（SELECT／WHERE）",
-      color: C.zoneTint1 },
-    { id: 1, name: "電腦區", key: "2",
-      x: SCENE_X + 4, y: SCENE_Y + 95, w: SCENE_W - 8, h: 120,
-      info: "SBA 進度：第 3 節 · 練習題 4／8 · 請儲存草稿",
-      color: C.zoneTint2 },
-    { id: 2, name: "討論區", key: "3",
-      x: SCENE_X + 4, y: SCENE_Y + 215, w: SCENE_W - 8, h: 78,
-      info: "小組協作 · 專題討論進行中 · 請小聲交流",
-      color: C.zoneTint3 },
-    { id: 3, name: "儲物區", key: "4",
-      x: SCENE_X + 4, y: SCENE_Y + SCENE_H, w: SCENE_W - 8, h: 150,
-      info: "教材／耳機／線材 · 借用請於教員室登記",
-      color: C.zoneTint4 },
+    {
+      id: 0, name: "講台", key: "1",
+      x: 40, y: TOP_H + 4, w: 280, h: 88,
+      info: "白板講解 · 今日課題：數據庫基礎（SELECT／WHERE）· 老師可喺度行嚟行去",
+      color: C.zoneTint1,
+    },
+    {
+      id: 1, name: "課室座位", key: "2",
+      x: 10, y: 120, w: 340, h: 270,
+      info: "4×4 座位 · 16 位同學 · 請沿走道巡堂，唔好撞到書枱",
+      color: C.zoneTint2,
+    },
   ];
+
+  const solids = [];
+  /* Front props */
+  solids.push({ x: 8, y: TOP_H + 36, w: 36, h: 40, kind: "prop" });       /* plant / window ledge L */
+  solids.push({ x: 316, y: TOP_H + 36, w: 36, h: 40, kind: "prop" });      /* plant R */
+  solids.push({ x: teacherDesk.x, y: teacherDesk.y, w: teacherDesk.w, h: teacherDesk.h, kind: "desk" });
+  /* 16 student desks — collide with desk body (not full chair) */
+  for (const d of desks) {
+    solids.push({ x: d.x + 4, y: d.y + 4, w: d.w - 8, h: 26, kind: "desk" });
+  }
+  /* Back shelf strip */
+  solids.push({ x: 12, y: 400, w: 70, h: 48, kind: "shelf" });
+  solids.push({ x: 278, y: 400, w: 70, h: 48, kind: "shelf" });
 
   const cam = { x: 0, y: 0, tx: 0, ty: 0 };
-
-  /* Collision solids — approximate furniture in PO scene + storage */
-  const solids = [
-    /* back wall furniture */
-    { x: SCENE_X + 8, y: SCENE_Y + 48, w: 70, h: 40, kind: "prop" },
-    { x: SCENE_X + 110, y: SCENE_Y + 48, w: 50, h: 40, kind: "door" },
-    { x: SCENE_X + 170, y: SCENE_Y + 55, w: 55, h: 32, kind: "sofa" },
-    { x: SCENE_X + 230, y: SCENE_Y + 40, w: 40, h: 50, kind: "shelf" },
-    /* left cubicles */
-    { x: SCENE_X + 12, y: SCENE_Y + 100, w: 95, h: 32, kind: "desk" },
-    { x: SCENE_X + 12, y: SCENE_Y + 136, w: 95, h: 32, kind: "desk" },
-    { x: SCENE_X + 12, y: SCENE_Y + 172, w: 95, h: 34, kind: "desk" },
-    /* right cubicles */
-    { x: SCENE_X + 150, y: SCENE_Y + 136, w: 95, h: 32, kind: "desk" },
-    { x: SCENE_X + 150, y: SCENE_Y + 172, w: 95, h: 34, kind: "desk" },
-    /* storage extension */
-    { x: SCENE_X + 16, y: SCENE_Y + SCENE_H + 20, w: 140, h: 36, kind: "shelf" },
-    { x: SCENE_X + 170, y: SCENE_Y + SCENE_H + 20, w: 140, h: 36, kind: "shelf" },
-    { x: SCENE_X + 16, y: SCENE_Y + SCENE_H + 70, w: 70, h: 48, kind: "cabinet" },
-    { x: SCENE_X + 100, y: SCENE_Y + SCENE_H + 70, w: 70, h: 48, kind: "cabinet" },
-    { x: SCENE_X + 190, y: SCENE_Y + SCENE_H + 65, w: 50, h: 55, kind: "tall" },
-    { x: SCENE_X + 255, y: SCENE_Y + SCENE_H + 70, w: 55, h: 48, kind: "printer" },
-  ];
 
   function charFootW(h) { return Math.max(14, (h * 0.42) | 0); }
 
   const teacher = {
-    x: SCENE_X + SCENE_W / 2 - 12, y: SCENE_Y + 210,
-    drawH: 48, speed: 1.55,
+    x: 168, y: 95,
+    drawH: 44, speed: 1.55,
     facing: 0, state: "idle", animDist: 0, vx: 0, vy: 0,
     sprite: "teacher",
   };
   teacher.w = charFootW(teacher.drawH);
   teacher.h = teacher.drawH;
 
-  const students = [
-    { x: SCENE_X + 40, y: SCENE_Y + 145, seated: true, drawH: 40, bob: 0.2, facing: 3, state: "idle", animDist: 0, sprite: "student4", w: 16, h: 40 },
-    { x: SCENE_X + 170, y: SCENE_Y + 145, seated: true, drawH: 42, bob: 1.1, facing: 3, state: "idle", animDist: 0, sprite: "student2", w: 16, h: 42 },
-    { x: SCENE_X + 40, y: SCENE_Y + 180, seated: true, drawH: 38, bob: 2.0, facing: 3, state: "idle", animDist: 0, sprite: "student0", w: 14, h: 38 },
-    { x: SCENE_X + 190, y: SCENE_Y + 180, seated: true, drawH: 42, bob: 0.7, facing: 3, state: "idle", animDist: 0, sprite: "student3", w: 16, h: 42 },
-    {
-      x: SCENE_X + 120, y: SCENE_Y + 230, seated: false, drawH: 44, bob: 0, facing: 2, state: "idle", animDist: 0,
-      sprite: "student1", w: charFootW(44), h: 44,
-      path: [
-        { x: SCENE_X + 120, y: SCENE_Y + 230 },
-        { x: SCENE_X + 220, y: SCENE_Y + 230 },
-        { x: SCENE_X + 220, y: SCENE_Y + 250 },
-        { x: SCENE_X + 120, y: SCENE_Y + 250 },
-      ],
-      pi: 0, speed: 0.5,
-    },
-  ];
+  const students = desks.map((d, i) => {
+    const spr = SPRITE_CYCLE[i % SPRITE_CYCLE.length];
+    const drawH = 32;
+    return {
+      x: d.x + 20,
+      y: d.y + 12,
+      seated: true,
+      drawH,
+      bob: i * 0.37,
+      facing: 3, /* face board (up) */
+      state: "idle",
+      animDist: 0,
+      sprite: spr,
+      w: charFootW(drawH),
+      h: drawH,
+      deskIndex: i,
+    };
+  });
 
   const cat = {
-    x: SCENE_X + 160, y: SCENE_Y + 250,
-    homeX: SCENE_X + 160, homeY: SCENE_Y + 250,
-    tx: SCENE_X + 160, ty: SCENE_Y + 250,
-    w: 26, h: 18, asleep: true, blink: 0, animDist: 0, facing: 2, state: "idle", speed: 0.65,
+    x: 170, y: 380,
+    homeX: 170, homeY: 380,
+    tx: 170, ty: 380,
+    w: 24, h: 16, asleep: true, blink: 0, animDist: 0, facing: 2, state: "idle", speed: 0.6,
   };
 
   const keys = Object.create(null);
@@ -340,12 +368,28 @@
     const show = isTouchUI && state === STATE.PLAY;
     if (dpad) dpad.classList.toggle("show", show);
     if (actions) actions.classList.toggle("show", show);
+    const hint = document.getElementById("rotateHint");
+    if (hint) {
+      const tall = window.matchMedia("(orientation: portrait) and (max-width: 700px)").matches;
+      if (tall && state === STATE.PLAY) {
+        hint.style.display = "block";
+        clearTimeout(window.__rotateHintTimer);
+        window.__rotateHintTimer = setTimeout(() => { hint.style.display = "none"; }, 3500);
+      } else {
+        hint.style.display = "none";
+      }
+    }
   }
   detectTouchUI();
   window.addEventListener("resize", detectTouchUI);
   window.addEventListener("orientationchange", detectTouchUI);
 
   function beginPlay() { state = STATE.PLAY; detectTouchUI(); }
+  // Auto-start for preview / deep-link
+  if (/[?&]play=1\b/.test(location.search)) {
+    setTimeout(beginPlay, 0);
+  }
+
 
   function openPanelForZone(z) {
     const pw = Math.min(300, W - 24), ph = 130;
@@ -361,20 +405,20 @@
       const score = inside ? d * 0.3 : d;
       if (score < bestD) { bestD = score; best = z; }
     }
-    if (best && bestD < 160) { highlightZone = best.id; highlightTimer = 90; openPanelForZone(best); }
+    if (best && bestD < 180) { highlightZone = best.id; highlightTimer = 90; openPanelForZone(best); }
   }
 
   window.addEventListener("keydown", (e) => {
     keys[e.code] = true;
-    if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
     if (state === STATE.TITLE && (e.code === "Space" || e.code === "Enter")) { beginPlay(); return; }
     if (state !== STATE.PLAY) return;
     if (e.code === "Escape") { panel = null; highlightZone = -1; return; }
     if (e.code === "KeyE" || e.code === "KeyF") { interactNearest(); return; }
-    const numMap = { Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3, Numpad1: 0, Numpad2: 1, Numpad3: 2, Numpad4: 3 };
+    const numMap = { Digit1: 0, Digit2: 1, Numpad1: 0, Numpad2: 1 };
     if (e.code in numMap) {
       const z = zones[numMap[e.code]];
-      highlightZone = z.id; highlightTimer = 100; openPanelForZone(z);
+      if (z) { highlightZone = z.id; highlightTimer = 100; openPanelForZone(z); }
     }
   });
   window.addEventListener("keyup", (e) => { keys[e.code] = false; });
@@ -419,7 +463,8 @@
   let hoverZone = null;
   canvas.addEventListener("mousemove", (e) => {
     if (state !== STATE.PLAY) return;
-    hoverZone = hitZone(screenToWorld(canvasPoint(e)).x, screenToWorld(canvasPoint(e)).y);
+    const w = screenToWorld(canvasPoint(e));
+    hoverZone = hitZone(w.x, w.y);
   });
 
   (function setupDpad() {
@@ -461,8 +506,7 @@
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   }
   function solidHitbox(s) {
-    if (s.kind === "door") return { x: s.x + 8, y: s.y + s.h - 10, w: s.w - 16, h: 10 };
-    return { x: s.x + 4, y: s.y + Math.max(0, s.h - 14), w: s.w - 8, h: Math.min(16, s.h) };
+    return { x: s.x + 3, y: s.y + Math.max(0, s.h - 14), w: s.w - 6, h: Math.min(16, s.h) };
   }
   function actorHitbox(a) {
     const fw = Math.max(10, a.w * 0.7), fh = Math.max(6, a.h * 0.18);
@@ -470,11 +514,10 @@
   }
   function collidesAt(a, nx, ny) {
     const foot = actorHitbox({ x: nx, y: ny, w: a.w, h: a.h });
-    if (foot.x < room.x + 4 || foot.x + foot.w > room.x + room.w - 4) return true;
-    if (foot.y < room.y + 70 || foot.y + foot.h > room.y + room.h - 4) return true;
+    if (foot.x < ROOM.x + 6 || foot.x + foot.w > ROOM.x + ROOM.w - 6) return true;
+    if (foot.y < ROOM.y + 56 || foot.y + foot.h > ROOM.y + ROOM.h - 6) return true;
     for (const s of solids) {
-      const hb = solidHitbox(s);
-      if (rectsOverlap(foot, hb)) return true;
+      if (rectsOverlap(foot, solidHitbox(s))) return true;
     }
     return false;
   }
@@ -502,27 +545,13 @@
     else teacher.state = "idle";
   }
 
-  function updateStudents() {
-    for (const s of students) {
-      if (s.seated || !s.path) continue;
-      const t = s.path[s.pi];
-      const dx = t.x - s.x, dy = t.y - s.y, dist = Math.hypot(dx, dy);
-      if (dist < 2) { s.pi = (s.pi + 1) % s.path.length; s.state = "idle"; continue; }
-      const vx = (dx / dist) * s.speed, vy = (dy / dist) * s.speed;
-      if (Math.abs(dx) > Math.abs(dy)) s.facing = dx < 0 ? 1 : 2;
-      else s.facing = dy < 0 ? 3 : 0;
-      if (moveActor(s, vx, vy)) { s.state = "walk"; s.animDist += s.speed; }
-      else { s.pi = (s.pi + 1) % s.path.length; s.state = "idle"; }
-    }
-  }
-
   function updateCat() {
     cat.blink++;
     if (cat.asleep) {
       if (cat.blink > 200 && Math.random() < 0.012) {
         cat.asleep = false;
-        cat.tx = cat.homeX + (Math.random() * 70 - 35);
-        cat.ty = cat.homeY + (Math.random() * 30 - 10);
+        cat.tx = cat.homeX + (Math.random() * 60 - 30);
+        cat.ty = cat.homeY + (Math.random() * 24 - 8);
         cat.state = "walk";
       }
       return;
@@ -532,8 +561,8 @@
       cat.state = "idle";
       if (Math.random() < 0.02) cat.asleep = true;
       else if (Math.random() < 0.03) {
-        cat.tx = cat.homeX + (Math.random() * 80 - 40);
-        cat.ty = cat.homeY + (Math.random() * 40 - 15);
+        cat.tx = cat.homeX + (Math.random() * 70 - 35);
+        cat.ty = cat.homeY + (Math.random() * 30 - 10);
       }
       return;
     }
@@ -543,10 +572,10 @@
   }
 
   function updateCamera() {
-    cam.tx = teacher.x + teacher.w / 2 + teacher.vx * 16 - W / 2;
-    cam.ty = teacher.y + teacher.h / 2 + teacher.vy * 16 - H / 2;
-    const maxX = Math.max(0, room.x + room.w + 10 - W);
-    const maxY = Math.max(0, room.y + room.h + BAR_H - H + 10);
+    cam.tx = teacher.x + teacher.w / 2 + teacher.vx * 14 - W / 2;
+    cam.ty = teacher.y + teacher.h / 2 + teacher.vy * 14 - H / 2;
+    const maxX = Math.max(0, ROOM.x + ROOM.w - W);
+    const maxY = Math.max(0, ROOM.y + ROOM.h + BAR_H - H + 8);
     cam.tx = Math.max(0, Math.min(maxX, cam.tx));
     cam.ty = Math.max(0, Math.min(maxY, cam.ty));
     cam.x += (cam.tx - cam.x) * 0.12;
@@ -569,19 +598,95 @@
     blitSized(name, actor.x + (actor.w - dw) / 2, actor.y + (yBob || 0) - (dh - actor.h), dw, dh, false);
   }
 
-  function drawWorld() {
-    /* Storage floor extension — match Pixel Office blue plank floor */
-    ctx.fillStyle = "#5aa0d0";
-    ctx.fillRect(SCENE_X, SCENE_Y + SCENE_H, SCENE_W, 160);
-    ctx.fillStyle = "#4a90c0";
-    for (let y = SCENE_Y + SCENE_H; y < SCENE_Y + SCENE_H + 160; y += 8) {
-      ctx.fillRect(SCENE_X, y, SCENE_W, 1);
+  function drawFloor() {
+    const x0 = ROOM.x, y0 = ROOM.y, w = ROOM.w, h = ROOM.h;
+    /* sky strip above wall */
+    ctx.fillStyle = C.sky;
+    ctx.fillRect(x0, y0, w, 22);
+    ctx.fillStyle = C.skyCloud;
+    for (let i = 0; i < 5; i++) {
+      const cx = x0 + 28 + i * 68 + ((frame / 40) | 0) % 3;
+      ctx.fillRect(cx, y0 + 6, 18, 6);
+      ctx.fillRect(cx + 4, y0 + 3, 10, 4);
     }
+    /* wall */
+    ctx.fillStyle = C.wall;
+    ctx.fillRect(x0, y0 + 20, w, 42);
+    ctx.fillStyle = C.wallLine;
+    for (let y = y0 + 26; y < y0 + 58; y += 7) ctx.fillRect(x0, y, w, 1);
+    ctx.fillStyle = C.wallBase;
+    ctx.fillRect(x0, y0 + 58, w, 4);
+    /* blue plank floor (Pixel Office style) */
+    ctx.fillStyle = C.floorA;
+    ctx.fillRect(x0, y0 + 62, w, h - 62);
+    const plankH = 10;
+    for (let y = y0 + 62, row = 0; y < y0 + h; y += plankH, row++) {
+      ctx.fillStyle = (row % 2 === 0) ? C.floorHi : C.floorB;
+      ctx.globalAlpha = 0.35;
+      ctx.fillRect(x0, y, w, 2);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "rgba(30,70,140,0.35)";
+      ctx.fillRect(x0, y + plankH - 1, w, 1);
+    }
+  }
 
-    /* Full Pixel Office scene backdrop */
-    if (SPR.scene) blitSized("scene", SCENE_X, SCENE_Y, SCENE_W, SCENE_H);
+  function drawFrontWallProps() {
+    /* windows */
+    if (SPR.window0) blitSized("window0", 48, ROOM.y + 22, 42, 40);
+    if (SPR.window1) blitSized("window1", 270, ROOM.y + 22, 42, 40);
+    /* whiteboard */
+    if (SPR.board) blitSized("board", 100, ROOM.y + 24, 160, 40);
+    else {
+      ctx.fillStyle = "#e8eef8";
+      ctx.fillRect(100, ROOM.y + 24, 160, 40);
+      ctx.strokeStyle = "#8aa0c0";
+      ctx.strokeRect(100, ROOM.y + 24, 160, 40);
+    }
+    /* chalk text */
+    ctx.fillStyle = "#c04040";
+    ctx.font = "bold 11px PingFang HK, Noto Sans TC, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("中四 ICT · SELECT", 180, ROOM.y + 48);
+    /* door */
+    if (SPR.door) blitSized("door", 8, ROOM.y + 28, 32, 48);
+    /* plants */
+    if (SPR.plant) {
+      blitSized("plant", 318, ROOM.y + 30, 28, 36);
+      blitSized("plant", 70, ROOM.y + 34, 24, 30);
+    } else if (SPR.kplant0) {
+      blitSized("kplant0", 320, ROOM.y + 28, 24, 40);
+    }
+    /* teacher desk */
+    if (SPR.table1) blitSized("table1", teacherDesk.x, teacherDesk.y, teacherDesk.w, teacherDesk.h);
+    else if (SPR.table0) blitSized("table0", teacherDesk.x, teacherDesk.y, teacherDesk.w, teacherDesk.h);
+    if (SPR.monitor) blitSized("monitor", teacherDesk.x + 36, teacherDesk.y - 12, 26, 20);
+  }
 
-    /* Zone overlays (subtle) */
+  function drawDesk(d) {
+    /* chair behind (toward bottom / larger Y) */
+    const chairName = d.chair;
+    if (SPR[chairName]) blitSized(chairName, d.x + 20, d.y + 18, 22, 34);
+    /* desk / table */
+    const tname = SPR[d.table] ? d.table : (SPR.table0 ? "table0" : "k_table");
+    if (SPR[tname]) blitSized(tname, d.x + 2, d.y + 2, d.w - 4, 28);
+    /* monitor */
+    if (SPR.monitor) blitSized("monitor", d.x + 22, d.y - 2, 22, 18);
+    else if (SPR.office1) blitSized("office1", d.x + 20, d.y - 4, 26, 20);
+  }
+
+  function drawBackProps() {
+    if (SPR.bookshelf) blitSized("bookshelf", 14, 395, 55, 55);
+    else if (SPR.kshelf0) blitSized("kshelf0", 14, 400, 50, 48);
+    if (SPR.printer) blitSized("printer", 280, 405, 55, 42);
+    if (SPR.sofa1) blitSized("sofa1", 90, 410, 70, 32);
+    if (SPR.vending) blitSized("vending", 240, 395, 32, 52);
+  }
+
+  function drawWorld() {
+    drawFloor();
+    drawFrontWallProps();
+
+    /* subtle zone tints + labels */
     for (const z of zones) {
       ctx.fillStyle = z.color;
       ctx.fillRect(z.x, z.y, z.w, z.h);
@@ -589,24 +694,19 @@
         ctx.fillStyle = C.highlight;
         ctx.fillRect(z.x, z.y, z.w, z.h);
       }
-      ctx.fillStyle = "rgba(255,255,255,0.8)";
-      ctx.fillRect(z.x + 4, z.y + 4, 48, 13);
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      ctx.fillRect(z.x + 4, z.y + 4, 56, 13);
       ctx.fillStyle = C.zoneLabel;
       ctx.font = "bold 10px PingFang HK, Noto Sans TC, sans-serif";
       ctx.textAlign = "left";
       ctx.fillText(z.name, z.x + 7, z.y + 14);
     }
 
-    /* Storage furniture (extension below scene) — Pixel Office props */
-    const sy = SCENE_Y + SCENE_H;
-    if (SPR.sofa0) blitSized("sofa0", SCENE_X + 20, sy + 24, 100, 44);
-    if (SPR.sofa2) blitSized("sofa2", SCENE_X + 130, sy + 28, 100, 40);
-    if (SPR.table1) blitSized("table1", SCENE_X + 240, sy + 30, 80, 36);
-    if (SPR.bookshelf) blitSized("bookshelf", SCENE_X + 20, sy + 85, 70, 55);
-    if (SPR.vending) blitSized("vending", SCENE_X + 110, sy + 78, 42, 62);
-    if (SPR.printer) blitSized("printer", SCENE_X + 170, sy + 90, 60, 48);
-    if (SPR.plant) blitSized("plant", SCENE_X + 250, sy + 95, 28, 40);
-    if (SPR.chair0) blitSized("chair0", SCENE_X + 290, sy + 95, 28, 40);
+    /* desks under actors (actors drawn later with Y-sort) — chairs/tables only;
+       students drawn in drawActors so they Y-sort with teacher */
+    for (const d of desks) drawDesk(d);
+
+    drawBackProps();
   }
 
   function drawActors() {
@@ -621,7 +721,7 @@
         if (SPR[nm]) blitSized(nm, cat.x, cat.y + (cat.asleep ? 1 : 0), cat.w, cat.h);
         continue;
       }
-      const bob = item.ref.seated ? Math.sin(frame * 0.05 + (item.ref.bob || 0)) * 0.5 : 0;
+      const bob = item.ref.seated ? Math.sin(frame * 0.05 + (item.ref.bob || 0)) * 0.4 : 0;
       drawChar(item.ref, bob);
     }
   }
@@ -647,16 +747,16 @@
 
   function drawUI() {
     ctx.fillStyle = C.uiPanel;
-    ctx.fillRect(0, 0, W, 28);
+    ctx.fillRect(0, 0, W, TOP_H);
     ctx.fillStyle = C.uiAccent;
-    ctx.fillRect(0, 28, W, 2);
+    ctx.fillRect(0, TOP_H, W, 2);
     ctx.fillStyle = C.ui;
     ctx.font = "bold 12px PingFang HK, Noto Sans TC, sans-serif";
     ctx.textAlign = "left";
     ctx.fillText("像素課室 · 中四 ICT", 10, 18);
     ctx.textAlign = "right";
     ctx.fillStyle = C.uiDim;
-    ctx.fillText("Lap Cheung Tsao", W - 10, 18);
+    ctx.fillText("4×4 · 16 位", W - 10, 18);
 
     ctx.fillStyle = C.uiPanel;
     ctx.fillRect(0, H - BAR_H, W, BAR_H);
@@ -665,7 +765,10 @@
     ctx.fillStyle = C.uiDim;
     ctx.font = "11px PingFang HK, Noto Sans TC, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(isTouchUI ? "虛擬方向鍵移動 · 右下互動" : "WASD／方向鍵 · E 互動 · 1–4 區域 · Esc 關閉", W / 2, H - BAR_H + 28);
+    ctx.fillText(
+      isTouchUI ? "虛擬方向鍵移動老師 · 右下互動" : "WASD／方向鍵移動老師 · E 互動 · 1–2 區域",
+      W / 2, H - BAR_H + 26
+    );
 
     if (panel) {
       ctx.fillStyle = C.overlay; ctx.fillRect(0, 0, W, H);
@@ -687,10 +790,19 @@
 
   function drawTitle() {
     ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
-    if (SPR.scene) blitSized("scene", 10, 130, 340, 297);
-    ctx.fillStyle = "rgba(10,14,22,0.55)";
+    /* preview classroom behind title */
+    ctx.save();
+    ctx.translate(0, 40);
+    ctx.scale(1, 1);
+    drawFloor();
+    drawFrontWallProps();
+    for (const d of desks) drawDesk(d);
+    for (const s of students) drawChar(s, 0);
+    drawChar(teacher, 0);
+    ctx.restore();
+    ctx.fillStyle = "rgba(10,14,22,0.62)";
     ctx.fillRect(0, 0, W, 130);
-    ctx.fillRect(0, H - 140, W, 140);
+    ctx.fillRect(0, H - 150, W, 150);
     ctx.fillStyle = C.titleGold;
     ctx.font = "bold 28px PingFang HK, Noto Sans TC, sans-serif";
     ctx.textAlign = "center";
@@ -700,7 +812,7 @@
     ctx.fillText("上課，像玩遊戲一樣", W / 2, 86);
     ctx.fillStyle = C.uiDim;
     ctx.font = "12px PingFang HK, Noto Sans TC, sans-serif";
-    ctx.fillText("中四 ICT · Lap Cheung Tsao", W / 2, 110);
+    ctx.fillText("4×4 座位 · 16 同學 · 你係老師", W / 2, 110);
     startBtn = { x: W / 2 - 90, y: H - 100, w: 180, h: 52 };
     ctx.fillStyle = C.uiAccent;
     roundRect(startBtn.x, startBtn.y, startBtn.w, startBtn.h, 14); ctx.fill();
@@ -714,7 +826,7 @@
     if (highlightTimer > 0) highlightTimer--;
     else if (!panel) highlightZone = -1;
     if (state === STATE.PLAY) {
-      updateTeacher(); updateStudents(); updateCat(); updateCamera();
+      updateTeacher(); updateCat(); updateCamera();
     }
     ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
     if (state === STATE.TITLE) drawTitle();
@@ -739,7 +851,6 @@
       ctx.fillText("Failed to load assets/", 20, 40);
     });
 })();
-
 </script>
 </body>
 </html>
