@@ -49,122 +49,71 @@
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
 
-  /* ── palette ── */
+  /* ── embedded atlas (offline, no CDN) ── */
+  const ATLAS_URI = "data:image/png;base64,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m967oGXxP8vS1Fa9d/QOzel51veXBaesXqVpmiaaJvU/zfghaywXqS33er32b225+cfQeG687nVMui768uPaQ9303Hi98ZpeXy7Ly41l7q+LVJ87pquOYVV31zmd/L146ZVXnySct5AA2INX0CBG+XDl7cHfbxJgD/5+kwB78PebBNiDv98kwB78s5oELE1t1Z1eiyMoJ72/rCiu6dGWg3g90IspiGvLwb+RCChe9wr+RuDXfNR0PW43B3qHJGB5/VqQbwr8iteNZc8865wA6CKvdmgQ6yIBaCEBcApefoMY5cOVdwr+XkmAU/D3SgKcgr9XEuAU/L2SAKfgn7UkYGlqq95T6le+dqyyEHlATnp/WUwAVAE+SOvfKfirAr/mkgUYwdueCDglAWF6AczLfCQAxzvsK1EgAQiv2/xkbnrCGqBGJgJtLOvlWxV2/7smrettHvNX7sDMdmugHt7mq9zOO6zb37LV3/7mpsat7290h69ykzusxzU2vj2T/1kGR2rv90eVR+R1pYtlbno89n3ZfXvHML9aYg3+Tcs0SwtHs3bpa5ZufbfgbymnCv6mdXRdF02rBen6Yem6rotmSgLMyxvb13XNSAJqm9IsSYUmoom2XManTukJ6OJ/QQQ9ACIi1b2T+sDw1npguaMeULbK4eoxX62NLJePogdgbnpCzPs3Hhd7el3L24/bXM5t/37Kqco7lfOqp6TLpan1bzzuKfVLdWpeiqNlOVZZsKwXVas86f1luQfArftf1fq3d/37Cf6aNbnQTC1/3ZwImHsDnHoCVEMBTr0ATsMAPnsAXhXRc54EaF31BIAegKgSgIWFBenvr3U9Go+LG8d8B+Asl291DkB176Retf1Ibx6f8izvVM5r/17lnMqrypVGt2th3l+c5dKYALiJIwFIYn9Zc+rJPZol2Lt0/xu9A5ZlmmmZ2JMCS89CU9A39mtvjBtRXhd7F74psFtf05u6/EWxTG8tAdBzOhygiRRIACJOAPRjR/XXjX5Win0XNF783mffKlrPab5+aLJefmBkm24uKyIyd9s7fZX97pUX6319fY6vl3ZMK7dz8c1XupabHtuhLHfllXe5ltt3/GfK47/ryptdyw3tUCdL9998tmu58tisstxlN9/mWm5ybCT1QWxpaqteqVRc1ymVSpEmAEnuL4sJgNP4f1NPgMvYv7317xb8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";
+  const SPR = {"floor0":{"x":0,"y":0,"w":32,"h":16},"floor1":{"x":34,"y":0,"w":32,"h":16},"floor2":{"x":68,"y":0,"w":32,"h":16},"floor3":{"x":102,"y":0,"w":32,"h":16},"carpet":{"x":0,"y":20,"w":16,"h":16},"wall":{"x":20,"y":20,"w":64,"h":28},"window":{"x":90,"y":20,"w":44,"h":34},"door":{"x":140,"y":20,"w":20,"h":66},"board":{"x":0,"y":90,"w":160,"h":56},"poster0":{"x":170,"y":90,"w":30,"h":28},"poster1":{"x":210,"y":90,"w":30,"h":28},"monitor":{"x":250,"y":90,"w":36,"h":28},"keyboard":{"x":290,"y":90,"w":40,"h":8},"mouse":{"x":340,"y":90,"w":8,"h":6},"chair":{"x":360,"y":90,"w":18,"h":20},"desk":{"x":0,"y":160,"w":72,"h":32},"teacherDesk":{"x":80,"y":160,"w":76,"h":36},"round":{"x":170,"y":160,"w":48,"h":48},"shelf0":{"x":230,"y":160,"w":92,"h":24},"shelf1":{"x":326,"y":160,"w":92,"h":24},"shelf2":{"x":230,"y":188,"w":92,"h":24},"shelf3":{"x":326,"y":188,"w":92,"h":24},"cabinet":{"x":0,"y":210,"w":42,"h":46},"plant0":{"x":50,"y":210,"w":20,"h":28},"plant1":{"x":74,"y":210,"w":20,"h":28},"plant2":{"x":98,"y":210,"w":20,"h":28},"plant3":{"x":122,"y":210,"w":20,"h":28},"teacher_0_0":{"x":0,"y":270,"w":10,"h":14},"teacher_0_1":{"x":16,"y":270,"w":10,"h":14},"teacher_0_2":{"x":32,"y":270,"w":10,"h":14},"teacher_0_3":{"x":48,"y":270,"w":10,"h":14},"teacher_3_0":{"x":64,"y":270,"w":10,"h":14},"teacher_3_1":{"x":80,"y":270,"w":10,"h":14},"teacher_3_2":{"x":96,"y":270,"w":10,"h":14},"teacher_3_3":{"x":112,"y":270,"w":10,"h":14},"teacher_2_0":{"x":0,"y":300,"w":10,"h":13},"teacher_2_1":{"x":16,"y":300,"w":10,"h":13},"teacher_2_2":{"x":32,"y":300,"w":10,"h":13},"teacher_2_3":{"x":48,"y":300,"w":10,"h":13},"teacher_1_0":{"x":0,"y":330,"w":10,"h":13},"teacher_1_1":{"x":16,"y":330,"w":10,"h":13},"teacher_1_2":{"x":32,"y":330,"w":10,"h":13},"teacher_1_3":{"x":48,"y":330,"w":10,"h":13},"student_sit_0":{"x":80,"y":270,"w":10,"h":11},"student_sit_1":{"x":94,"y":270,"w":10,"h":11},"student_sit_2":{"x":108,"y":270,"w":10,"h":11},"student_sit_3":{"x":122,"y":270,"w":10,"h":11},"student_sit_4":{"x":136,"y":270,"w":10,"h":11},"student_sit_5":{"x":150,"y":270,"w":10,"h":11},"student_walk_0_0":{"x":80,"y":300,"w":10,"h":11},"student_walk_0_1":{"x":94,"y":300,"w":10,"h":11},"student_walk_0_2":{"x":108,"y":300,"w":10,"h":11},"student_walk_0_3":{"x":122,"y":300,"w":10,"h":11},"student_walk_1_0":{"x":80,"y":316,"w":10,"h":11},"student_walk_1_1":{"x":94,"y":316,"w":10,"h":11},"student_walk_1_2":{"x":108,"y":316,"w":10,"h":11},"student_walk_1_3":{"x":122,"y":316,"w":10,"h":11},"student_walk_2_0":{"x":80,"y":332,"w":10,"h":11},"student_walk_2_1":{"x":94,"y":332,"w":10,"h":11},"student_walk_2_2":{"x":108,"y":332,"w":10,"h":11},"student_walk_2_3":{"x":122,"y":332,"w":10,"h":11},"student_walk_3_0":{"x":80,"y":348,"w":10,"h":11},"student_walk_3_1":{"x":94,"y":348,"w":10,"h":11},"student_walk_3_2":{"x":108,"y":348,"w":10,"h":11},"student_walk_3_3":{"x":122,"y":348,"w":10,"h":11},"cat_loaf":{"x":200,"y":270,"w":10,"h":8},"cat_sleep":{"x":228,"y":270,"w":10,"h":8},"cat_walk_2_0":{"x":200,"y":288,"w":10,"h":8},"cat_walk_1_0":{"x":200,"y":306,"w":10,"h":8},"cat_walk_2_1":{"x":218,"y":288,"w":10,"h":8},"cat_walk_1_1":{"x":218,"y":306,"w":10,"h":8},"cat_walk_2_2":{"x":236,"y":288,"w":10,"h":8},"cat_walk_1_2":{"x":236,"y":306,"w":10,"h":8},"cat_walk_2_3":{"x":254,"y":288,"w":10,"h":8},"cat_walk_1_3":{"x":254,"y":306,"w":10,"h":8},"warmGlow":{"x":300,"y":270,"w":64,"h":64},"vignetteCorner":{"x":370,"y":270,"w":64,"h":64}};
+
+  const atlas = new Image();
+  let atlasReady = false;
+  atlas.onload = () => { atlasReady = true; };
+  atlas.src = ATLAS_URI;
+
+  function blit(name, dx, dy, flipX) {
+    const s = SPR[name];
+    if (!s || !atlasReady) return;
+    const x = (dx + 0.5) | 0, y = (dy + 0.5) | 0;
+    if (flipX) {
+      ctx.save();
+      ctx.translate(x + s.w, y);
+      ctx.scale(-1, 1);
+      ctx.drawImage(atlas, s.x, s.y, s.w, s.h, 0, 0, s.w, s.h);
+      ctx.restore();
+    } else {
+      ctx.drawImage(atlas, s.x, s.y, s.w, s.h, x, y, s.w, s.h);
+    }
+  }
+
+  function blitStretch(name, dx, dy, dw, dh) {
+    const s = SPR[name];
+    if (!s || !atlasReady) return;
+    ctx.drawImage(atlas, s.x, s.y, s.w, s.h, (dx+0.5)|0, (dy+0.5)|0, (dw+0.5)|0, (dh+0.5)|0);
+  }
+
+  function blitTiled(name, dx, dy, dw, dh) {
+    const s = SPR[name];
+    if (!s || !atlasReady) return;
+    const x0 = (dx+0.5)|0, y0 = (dy+0.5)|0;
+    const x1 = x0 + ((dw+0.5)|0), y1 = y0 + ((dh+0.5)|0);
+    for (let y = y0; y < y1; y += s.h) {
+      for (let x = x0; x < x1; x += s.w) {
+        const tw = Math.min(s.w, x1 - x);
+        const th = Math.min(s.h, y1 - y);
+        ctx.drawImage(atlas, s.x, s.y, tw, th, x, y, tw, th);
+      }
+    }
+  }
+
+  /* ── palette (UI / fallbacks) ── */
   const C = {
     bg: "#120c08",
-    wall: "#f0e0c8",
-    wallMid: "#e4d0b0",
-    wallDark: "#d4bc98",
-    wallTrim: "#8b5e3c",
-    wallTrimDark: "#6b4423",
-    wallTrimLight: "#c49a6c",
+    wall: "#f0e0c8", wallDark: "#d4bc98",
+    trim: "#8b5e3c", trimL: "#c49a6c", trimD: "#6b4423",
     baseboard: "#7a4e2e",
     floor: "#b88850",
-    floorA: "#c89860",
-    floorB: "#a87848",
-    floorC: "#d0a870",
-    floorGrain: "#9a6840",
-    floorDark: "#8a5838",
-    carpet: "#7a4a3a",
-    carpetLight: "#9a5a48",
-    carpetDark: "#5a3028",
-    carpetEdge: "#c87858",
-    wood: "#8b5e3c",
-    woodDark: "#5c3a22",
-    woodMid: "#a07040",
-    woodLight: "#c49a6c",
-    woodPale: "#e0b888",
-    desk: "#a07040",
-    deskTop: "#d4a060",
-    deskEdge: "#8a5830",
-    deskLeg: "#5c3a22",
-    monitor: "#2a3040",
-    monitorBezel: "#1a2030",
-    monitorScreen: "#3a78a8",
-    monitorGlow: "#58b0e0",
-    monitorBright: "#88d0f0",
-    keyboard: "#3a4050",
-    keyCap: "#5a6070",
-    chair: "#4a6080",
-    chairSeat: "#3a5070",
-    chairBack: "#2a4058",
-    board: "#2e6b4a",
-    boardDark: "#1e5038",
-    boardFrame: "#6b4423",
-    boardFrameLight: "#a07040",
-    chalk: "#e8f0e0",
-    chalkDim: "#b8c8b0",
-    chalkYellow: "#f0e080",
-    chalkPink: "#e8a0b0",
-    skyTop: "#6aa8d0",
-    skyMid: "#98c8e8",
-    skyBot: "#c0e0f0",
-    cloud: "#f0f8ff",
-    green: "#3a8840",
-    greenDark: "#286030",
-    greenLight: "#68b858",
-    greenLeaf: "#50a048",
-    plant: "#2e7040",
-    plantPot: "#a85838",
-    plantPotDark: "#804028",
-    plantDirt: "#5a3820",
-    shelf: "#8b5e3c",
-    book1: "#c84838",
-    book2: "#3870b0",
-    book3: "#e8a838",
-    book4: "#58a050",
-    book5: "#9060b0",
-    book6: "#d07040",
-    posterBg: "#f8f0e0",
-    posterRed: "#c04040",
-    posterBlue: "#4060a0",
-    door: "#8b5e3c",
-    doorDark: "#6b4423",
-    doorLight: "#c49a6c",
-    doorKnob: "#e8c060",
-    ui: "#fff8ee",
-    uiDim: "#a89880",
-    uiPanel: "#2e1e12",
-    uiPanelMid: "#3e2a1a",
-    uiPanelBorder: "#c49a6c",
-    uiAccent: "#f0c14b",
-    uiChip: "#4a3424",
-    uiChipAlt: "#3a5030",
-    shadow: "rgba(30,18,8,0.40)",
-    shadowSoft: "rgba(30,18,8,0.22)",
-    overlay: "rgba(18,12,8,0.82)",
-    titleGold: "#f0c14b",
-    titleCream: "#fff8ee",
+    ui: "#fff8ee", uiDim: "#a89880",
+    uiPanel: "#2e1e12", uiPanelMid: "#3e2a1a", uiPanelBorder: "#c49a6c",
+    uiAccent: "#f0c14b", uiChip: "#4a3424", uiChipAlt: "#3a5030",
+    titleGold: "#f0c14b", titleCream: "#fff8ee",
     highlight: "rgba(240,193,75,0.28)",
     zoneTint1: "rgba(46,107,74,0.14)",
     zoneTint2: "rgba(58,110,165,0.14)",
     zoneTint3: "rgba(200,100,70,0.12)",
     zoneTint4: "rgba(160,90,50,0.14)",
     zoneLabel: "#2e1e12",
-    teacherShirt: "#3a6ea5",
-    teacherShirtDark: "#2a5078",
-    teacherPants: "#2a3850",
-    teacherSkin: "#f0c8a0",
-    teacherSkinShade: "#e0a878",
-    teacherHair: "#2a1820",
-    teacherShoe: "#1a1420",
-    studentA: "#e07050",
-    studentB: "#50a070",
-    studentC: "#7070c0",
-    studentD: "#c070a0",
-    studentE: "#d0a040",
-    studentF: "#60a0b0",
-    studentSkin: "#f0c8a0",
-    studentHair: ["#2a1820","#3a2820","#1a1018","#4a3020","#2a2030","#503828"],
-    cat: "#e8a868",
-    catDark: "#c88848",
-    catLight: "#f0c890",
-    catEye: "#2a1820",
-    catNose: "#e07060",
+    overlay: "rgba(18,12,8,0.82)",
+    chalk: "#e8f0e0", chalkY: "#f0e080", chalkDim: "#b8c8b0",
+    shadow: "rgba(30,18,8,0.40)",
     white: "#fff8ee",
-    black: "#1a1008",
-    warmLight: "rgba(255,220,150,0.12)",
-    warmGlow: "rgba(255,200,100,0.18)",
   };
 
   const STATE = { TITLE: 0, PLAY: 1 };
@@ -178,13 +127,11 @@
   const WALL_S = 20;
   const BAR_H = 36;
   const room = {
-    x: WALL_S,
-    y: WALL_T,
+    x: WALL_S, y: WALL_T,
     w: W - WALL_S * 2,
     h: H - WALL_T - BAR_H,
   };
 
-  /* ── zones ── */
   const zones = [
     { id: 0, name: "講授區", key: "1",
       x: room.x + 4, y: room.y + 4, w: 156, h: 108,
@@ -204,14 +151,10 @@
       color: C.zoneTint4 },
   ];
 
-  /* ── furniture solids (collision) ── */
   const solids = [];
-
-  // teacher desk
   const teacherDesk = { x: room.x + 40, y: room.y + 58, w: 72, h: 30, kind: "teacherDesk" };
   solids.push(teacherDesk);
 
-  // student desks 3×3
   const deskPositions = [];
   for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 3; col++) {
@@ -223,54 +166,43 @@
     }
   }
 
-  // round discussion tables
   solids.push({ x: room.x + 22, y: room.y + 148, w: 44, h: 44, kind: "round" });
   solids.push({ x: room.x + 92, y: room.y + 188, w: 44, h: 44, kind: "round" });
 
-  // shelves
   solids.push({ x: room.x + 486, y: room.y + 24, w: 88, h: 22, kind: "shelf", tier: 0 });
   solids.push({ x: room.x + 486, y: room.y + 58, w: 88, h: 22, kind: "shelf", tier: 1 });
   solids.push({ x: room.x + 486, y: room.y + 92, w: 88, h: 22, kind: "shelf", tier: 2 });
   solids.push({ x: room.x + 486, y: room.y + 126, w: 88, h: 22, kind: "shelf", tier: 3 });
 
-  // cabinets
   solids.push({ x: room.x + 486, y: room.y + 168, w: 40, h: 42, kind: "cabinet" });
   solids.push({ x: room.x + 534, y: room.y + 168, w: 40, h: 42, kind: "cabinet" });
 
-  // whiteboard (thin collision)
   solids.push({ x: room.x + 12, y: room.y + 8, w: 148, h: 8, kind: "board" });
 
-  // plants
   solids.push({ x: room.x + 6, y: room.y + room.h - 30, w: 18, h: 22, kind: "plant", style: 0 });
   solids.push({ x: room.x + room.w - 26, y: room.y + room.h - 30, w: 18, h: 22, kind: "plant", style: 1 });
   solids.push({ x: room.x + room.w - 26, y: room.y + 8, w: 18, h: 22, kind: "plant", style: 2 });
   solids.push({ x: room.x + 6, y: room.y + 100, w: 16, h: 18, kind: "plant", style: 3 });
 
-  // door (left wall visual only — thin solid)
   solids.push({ x: 2, y: room.y + room.h - 70, w: WALL_S - 4, h: 56, kind: "door" });
 
-  /* ── entities ── */
   const teacher = {
     x: room.x + 70, y: room.y + 110, w: 12, h: 16, speed: 1.4, facing: 0, walkPhase: 0,
   };
 
-  const studentColors = [C.studentA, C.studentB, C.studentC, C.studentD, C.studentE, C.studentF, C.studentA, C.studentC];
+  const studentColors = [0,1,2,3,4,5,0];
   const students = [];
-  // seated at desks 0,1,2,3,5,6,7 (skip 4 — cat zone)
   const seatedIdx = [0, 1, 2, 3, 5, 6, 7];
   for (let i = 0; i < seatedIdx.length; i++) {
     const d = deskPositions[seatedIdx[i]];
     students.push({
-      x: d.x + 28, y: d.y + 30, seated: true,
-      color: studentColors[i], hair: C.studentHair[i % C.studentHair.length],
-      bob: i * 0.9, facing: 3, // facing up toward monitor
+      x: d.x + 26, y: d.y + 28, seated: true,
+      sprite: studentColors[i], bob: i * 0.9, facing: 3,
     });
   }
-  // one walking student in discussion area
   students.push({
     x: room.x + 48, y: room.y + 220, seated: false,
-    color: C.studentF, hair: C.studentHair[2],
-    bob: 0, walkPhase: 0, facing: 2,
+    sprite: 5, bob: 0, walkPhase: 0, facing: 2,
     path: [
       { x: room.x + 48, y: room.y + 220 },
       { x: room.x + 130, y: room.y + 220 },
@@ -287,13 +219,10 @@
     asleep: true, blink: 0, walkPhase: 0, facing: 2, moving: false,
   };
 
-  /* ── carpet zone in discussion area ── */
   const carpet = { x: room.x + 10, y: room.y + 130, w: 148, h: room.h - 140 };
-
-  /* ── posters on walls ── */
   const posters = [
-    { x: room.x + 170, y: room.y + 6, w: 28, h: 22, kind: "code" },
-    { x: room.x + 460, y: room.y + 6, w: 22, h: 26, kind: "chart" },
+    { x: room.x + 170, y: room.y + 6, kind: 0 },
+    { x: room.x + 460, y: room.y + 6, kind: 1 },
   ];
 
   /* ── input ── */
@@ -302,8 +231,7 @@
     keys[e.code] = true;
     if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
     if (state === STATE.TITLE && (e.code === "Space" || e.code === "Enter")) {
-      state = STATE.PLAY;
-      return;
+      state = STATE.PLAY; return;
     }
     if (state !== STATE.PLAY) return;
     if (e.code === "Escape") { panel = null; highlightZone = -1; return; }
@@ -327,8 +255,7 @@
 
   function openPanelForZone(z) {
     panel = {
-      title: z.name,
-      info: z.info,
+      title: z.name, info: z.info,
       x: Math.min(Math.max(z.x + z.w / 2 - 90, 10), W - 190),
       y: Math.min(Math.max(z.y + 12, 44), H - BAR_H - 80),
     };
@@ -347,12 +274,8 @@
     if (state === STATE.TITLE) { state = STATE.PLAY; return; }
     const z = hitZone(p.x, p.y);
     if (z) {
-      highlightZone = z.id;
-      highlightTimer = 70;
-      openPanelForZone(z);
-    } else {
-      panel = null;
-    }
+      highlightZone = z.id; highlightTimer = 70; openPanelForZone(z);
+    } else panel = null;
   });
 
   let hoverZone = null;
@@ -361,13 +284,12 @@
     hoverZone = hitZone(canvasPoint(e).x, canvasPoint(e).y);
   });
 
-  /* ── collision ── */
   function rectsOverlap(a, b) {
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   }
 
   function blocked(nx, ny) {
-    const box = { x: nx, y: ny + 8, w: teacher.w, h: teacher.h - 6 }; // feet box
+    const box = { x: nx, y: ny + 8, w: teacher.w, h: teacher.h - 6 };
     if (box.x < room.x + 3 || box.y < room.y + 4 ||
         box.x + box.w > room.x + room.w - 3 ||
         box.y + box.h > room.y + room.h - 3) return true;
@@ -379,7 +301,6 @@
     return false;
   }
 
-  /* ── update ── */
   function updateTeacher() {
     let dx = 0, dy = 0;
     if (keys["ArrowLeft"] || keys["KeyA"]) dx -= 1;
@@ -422,7 +343,6 @@
       if (cat.blink > 180) {
         cat.asleep = !cat.asleep;
         cat.blink = 0;
-        // occasionally decide to walk
         if (!cat.asleep && Math.random() < 0.45) {
           cat.moving = true;
           const spots = [
@@ -443,8 +363,7 @@
         cat.x = cat.tx; cat.y = cat.ty;
         cat.moving = false;
         cat.asleep = Math.random() < 0.6;
-        cat.blink = 0;
-        cat.walkPhase = 0;
+        cat.blink = 0; cat.walkPhase = 0;
       } else {
         cat.x += (dx / dist) * 0.55;
         cat.y += (dy / dist) * 0.55;
@@ -455,365 +374,150 @@
     }
   }
 
-  /* ── draw helpers ── */
   function fillRect(x, y, w, h, color) {
     ctx.fillStyle = color;
     ctx.fillRect((x + 0.5) | 0, (y + 0.5) | 0, (w + 0.5) | 0, (h + 0.5) | 0);
   }
 
-  function hash(x, y) {
-    let n = x * 374761393 + y * 668265263;
-    n = (n ^ (n >> 13)) * 1274126177;
-    return ((n ^ (n >> 16)) >>> 0) / 4294967296;
-  }
-
-  /* ── floor ── */
+  /* ── scene layers ── */
   function drawFloor() {
-    fillRect(room.x, room.y, room.w, room.h, C.floor);
-    const tw = 20, th = 10;
+    // staggered plank rows using 4 floor variants
+    const tw = 32, th = 16;
     for (let ty = room.y; ty < room.y + room.h; ty += th) {
       const row = ((ty - room.y) / th) | 0;
       const offset = (row % 2) * (tw / 2);
       for (let tx = room.x - tw; tx < room.x + room.w + tw; tx += tw) {
         const px = tx + offset;
         if (px + tw < room.x || px > room.x + room.w) continue;
-        const h = hash(px | 0, ty | 0);
-        const col = h < 0.33 ? C.floorA : h < 0.66 ? C.floorB : C.floorC;
+        const variant = ((row * 3 + ((tx / tw) | 0) * 7) % 4);
         const clipX = Math.max(px, room.x);
         const clipW = Math.min(px + tw, room.x + room.w) - clipX;
         if (clipW <= 0) continue;
-        fillRect(clipX, ty, clipW, th, col);
-        // grain line
-        if (h > 0.7) fillRect(clipX + 3, ty + 3, Math.min(8, clipW - 4), 1, C.floorGrain);
-        if (h < 0.2) fillRect(clipX + 6, ty + 6, Math.min(5, clipW - 6), 1, C.floorDark);
+        const s = SPR["floor" + variant];
+        if (!s || !atlasReady) {
+          fillRect(clipX, ty, clipW, th, C.floor);
+          continue;
+        }
+        const srcOff = clipX - px;
+        ctx.drawImage(atlas, s.x + srcOff, s.y, clipW, Math.min(th, s.h), clipX, ty, clipW, th);
       }
-      // plank seam
-      fillRect(room.x, ty + th - 1, room.w, 1, C.floorGrain);
     }
   }
 
   function drawCarpet() {
     const c = carpet;
-    fillRect(c.x + 2, c.y + 2, c.w, c.h, C.shadowSoft);
-    fillRect(c.x, c.y, c.w, c.h, C.carpet);
-    // border
-    fillRect(c.x, c.y, c.w, 3, C.carpetEdge);
-    fillRect(c.x, c.y + c.h - 3, c.w, 3, C.carpetEdge);
-    fillRect(c.x, c.y, 3, c.h, C.carpetEdge);
-    fillRect(c.x + c.w - 3, c.y, 3, c.h, C.carpetEdge);
-    // inner pattern
-    fillRect(c.x + 6, c.y + 6, c.w - 12, c.h - 12, C.carpetDark);
-    fillRect(c.x + 10, c.y + 10, c.w - 20, c.h - 20, C.carpet);
-    // diamond dots
-    for (let i = 0; i < 4; i++) {
-      for (let j = 0; j < 3; j++) {
-        const dx = c.x + 22 + i * 30;
-        const dy = c.y + 22 + j * 28;
-        if (dx < c.x + c.w - 16 && dy < c.y + c.h - 16) {
-          fillRect(dx, dy, 4, 4, C.carpetLight);
-          fillRect(dx + 1, dy + 1, 2, 2, C.carpetEdge);
-        }
-      }
-    }
+    fillRect(c.x + 2, c.y + 2, c.w, c.h, "rgba(30,18,8,0.25)");
+    blitTiled("carpet", c.x, c.y, c.w, c.h);
+    // ornate border
+    fillRect(c.x, c.y, c.w, 3, "#c87858");
+    fillRect(c.x, c.y + c.h - 3, c.w, 3, "#c87858");
+    fillRect(c.x, c.y, 3, c.h, "#c87858");
+    fillRect(c.x + c.w - 3, c.y, 3, c.h, "#c87858");
+    fillRect(c.x + 4, c.y + 4, c.w - 8, 1, "rgba(154,90,72,0.7)");
+    fillRect(c.x + 4, c.y + c.h - 5, c.w - 8, 1, "rgba(154,90,72,0.7)");
   }
 
-  /* ── windows ── */
-  function drawWindow(x, y, w, h) {
-    // frame outer
-    fillRect(x - 3, y - 3, w + 6, h + 6, C.wallTrimDark);
-    fillRect(x - 2, y - 2, w + 4, h + 4, C.wallTrim);
-    fillRect(x - 1, y - 1, w + 2, h + 2, C.wallTrimLight);
-    // sky gradient bands
-    fillRect(x, y, w, h, C.skyMid);
-    fillRect(x, y, w, (h * 0.35) | 0, C.skyTop);
-    fillRect(x, y + (h * 0.55) | 0, w, (h * 0.45) | 0, C.skyBot);
-    // parallax clouds
-    const drift = ((frame * 0.15) + x) % (w + 40);
-    fillRect(x + drift - 20, y + 4, 18, 5, C.cloud);
-    fillRect(x + drift - 14, y + 2, 10, 4, C.cloud);
-    const drift2 = ((frame * 0.08) + x * 1.7) % (w + 50);
-    fillRect(x + drift2 - 30, y + 8, 14, 4, "rgba(240,248,255,0.7)");
-    // parallax greenery (near)
-    fillRect(x, y + h - 10, w, 10, C.greenDark);
-    for (let i = 0; i < 6; i++) {
-      const sway = Math.sin(frame * 0.04 + i * 1.3 + x) * 1.5;
-      const gx = x + 4 + i * 12 + sway;
-      fillRect(gx, y + h - 16, 10, 10, i % 2 ? C.green : C.greenLight);
-      fillRect(gx + 2, y + h - 20, 6, 6, C.greenLeaf);
-      fillRect(gx + 3, y + h - 22, 3, 3, C.greenLight);
-    }
-    // far hills
-    fillRect(x + 2, y + h - 14, w - 4, 4, C.greenDark);
-    // mullions
-    fillRect(x + (w / 2) - 1, y, 2, h, C.wallTrimDark);
-    fillRect(x, y + (h / 2) - 1, w, 2, C.wallTrimDark);
-    // glass highlight
-    fillRect(x + 2, y + 2, 4, h / 2 - 4, "rgba(255,255,255,0.25)");
-    // sill
-    fillRect(x - 4, y + h + 2, w + 8, 4, C.wallTrim);
-    fillRect(x - 3, y + h + 2, w + 6, 2, C.wallTrimLight);
-  }
-
-  /* ── walls ── */
   function drawWalls() {
-    // top wall
-    fillRect(0, 0, W, WALL_T, C.wall);
-    for (let i = 0; i < W; i += 8) {
-      if (hash(i, 0) > 0.7) fillRect(i, 4, 3, 3, C.wallMid);
-    }
+    // top wall with atlas strip tiled
+    blitTiled("wall", 0, 0, W, WALL_T);
     // side walls
     fillRect(0, 0, WALL_S, H - BAR_H, C.wall);
     fillRect(W - WALL_S, 0, WALL_S, H - BAR_H, C.wallDark);
-    // wall texture stripes
-    for (let y = 4; y < WALL_T - 4; y += 6) {
-      fillRect(0, y, W, 1, C.wallMid);
+    for (let y = 4; y < WALL_T - 4; y += 6) fillRect(0, y, WALL_S, 1, "#e4d0b0");
+    for (let y = 4; y < H - BAR_H - 4; y += 8) {
+      fillRect(2, y, 3, 2, "rgba(212,188,152,0.5)");
+      fillRect(W - 8, y, 3, 2, "rgba(180,150,120,0.4)");
     }
-    // trim / chair rail
-    fillRect(0, WALL_T - 4, W, 4, C.wallTrim);
-    fillRect(0, WALL_T - 3, W, 1, C.wallTrimLight);
-    fillRect(0, WALL_T - 1, W, 1, C.wallTrimDark);
     // side trim
-    fillRect(WALL_S - 3, WALL_T, 3, room.h, C.wallTrim);
-    fillRect(W - WALL_S, WALL_T, 3, room.h, C.wallTrimDark);
+    fillRect(WALL_S - 3, WALL_T, 3, room.h, C.trim);
+    fillRect(W - WALL_S, WALL_T, 3, room.h, C.trimD);
     // baseboard
     fillRect(0, room.y + room.h - 4, W, 4, C.baseboard);
-    fillRect(0, room.y + room.h - 3, W, 1, C.wallTrimLight);
+    fillRect(0, room.y + room.h - 3, W, 1, C.trimL);
 
-    // windows along top
-    drawWindow(room.x + 178, 3, 78, 22);
-    drawWindow(room.x + 272, 3, 78, 22);
-    drawWindow(room.x + 366, 3, 78, 22);
-
-    // door on left
-    drawDoor();
+    // windows (animated cloud via offset blit + overlay drift)
+    const wins = [room.x + 178, room.x + 272, room.x + 366];
+    for (const wx of wins) {
+      blit("window", wx - 3, 1);
+      // soft animated cloud overlay
+      const drift = ((frame * 0.12) + wx) % 50;
+      ctx.fillStyle = "rgba(240,248,255,0.35)";
+      fillRect(wx + 6 + drift * 0.4, 8, 10, 3);
+      fillRect(wx + 10 + drift * 0.4, 6, 6, 2);
+    }
+    blit("door", 2, room.y + room.h - 68);
   }
 
-  function drawDoor() {
-    const dx = 3, dy = room.y + room.h - 68, dw = WALL_S - 2, dh = 64;
-    fillRect(dx - 1, dy - 2, dw + 2, dh + 2, C.wallTrimDark);
-    fillRect(dx, dy, dw, dh, C.door);
-    fillRect(dx + 2, dy + 3, dw - 4, dh - 8, C.doorDark);
-    // panels
-    fillRect(dx + 4, dy + 6, dw - 8, 22, C.door);
-    fillRect(dx + 4, dy + 32, dw - 8, 22, C.door);
-    fillRect(dx + 5, dy + 7, dw - 10, 1, C.doorLight);
-    fillRect(dx + 5, dy + 33, dw - 10, 1, C.doorLight);
-    // knob
-    fillRect(dx + dw - 6, dy + dh / 2 - 2, 3, 3, C.doorKnob);
-    fillRect(dx + dw - 5, dy + dh / 2 - 1, 1, 1, C.white);
-  }
-
-  /* ── whiteboard ── */
   function drawWhiteboard() {
-    const bx = room.x + 12, by = room.y + 8, bw = 148, bh = 42;
-    // frame
-    fillRect(bx - 4, by - 4, bw + 8, bh + 10, C.boardFrame);
-    fillRect(bx - 3, by - 3, bw + 6, bh + 6, C.boardFrameLight);
-    fillRect(bx - 2, by - 2, bw + 4, bh + 4, C.boardFrame);
-    // board surface
-    fillRect(bx, by, bw, bh, C.board);
-    fillRect(bx, by, bw, 3, C.boardDark);
-    // chalk marks / diagram
+    blit("board", room.x + 10, room.y + 6);
+    // live chalk text overlay (readable)
+    const bx = room.x + 18, by = room.y + 16;
+    ctx.textAlign = "left";
     ctx.fillStyle = C.chalk;
     ctx.font = "bold 8px monospace";
-    ctx.textAlign = "left";
-    ctx.fillText("ICT · 數據庫", bx + 8, by + 12);
-    ctx.fillStyle = C.chalkYellow;
+    ctx.fillText("ICT · 數據庫", bx, by);
+    ctx.fillStyle = C.chalkY;
     ctx.font = "7px monospace";
-    ctx.fillText("SELECT name FROM students", bx + 6, by + 24);
+    ctx.fillText("SELECT name FROM students", bx - 2, by + 12);
     ctx.fillStyle = C.chalkDim;
-    ctx.fillText("WHERE class = '4A';", bx + 14, by + 34);
-    // chalk doodles
-    fillRect(bx + bw - 28, by + 8, 18, 1, C.chalkPink);
-    fillRect(bx + bw - 28, by + 8, 1, 12, C.chalkPink);
-    fillRect(bx + bw - 22, by + 14, 8, 8, "rgba(232,240,224,0.3)");
-    fillRect(bx + bw - 20, by + 16, 4, 4, C.chalk);
-    // chalk tray
-    fillRect(bx - 2, by + bh + 2, bw + 4, 5, C.woodLight);
-    fillRect(bx, by + bh + 3, 6, 3, C.chalk);
-    fillRect(bx + 10, by + bh + 3, 5, 3, C.chalkYellow);
-    fillRect(bx + 20, by + bh + 3, 5, 3, C.chalkPink);
-    // eraser
-    fillRect(bx + bw - 20, by + bh + 2, 14, 4, "#5a5048");
+    ctx.fillText("WHERE class = '4A';", bx + 6, by + 22);
   }
 
-  /* ── posters ── */
   function drawPosters() {
-    for (const p of posters) {
-      fillRect(p.x - 1, p.y - 1, p.w + 2, p.h + 2, C.woodDark);
-      fillRect(p.x, p.y, p.w, p.h, C.posterBg);
-      if (p.kind === "code") {
-        fillRect(p.x + 2, p.y + 2, p.w - 4, 4, C.posterBlue);
-        fillRect(p.x + 3, p.y + 8, 8, 2, C.posterRed);
-        fillRect(p.x + 3, p.y + 12, 14, 2, "#406080");
-        fillRect(p.x + 3, p.y + 16, 10, 2, "#406080");
-      } else {
-        fillRect(p.x + 2, p.y + 2, p.w - 4, 3, C.posterRed);
-        fillRect(p.x + 4, p.y + 8, 4, 12, C.posterBlue);
-        fillRect(p.x + 10, p.y + 12, 4, 8, C.green);
-        fillRect(p.x + 16, p.y + 6, 4, 14, C.book3);
+    for (const p of posters) blit("poster" + p.kind, p.x, p.y);
+  }
+
+  function drawDeskUnit(d, isTeacher) {
+    // chair behind desk
+    blit("chair", d.x + d.w / 2 - 8, d.y + d.h - 2);
+    if (isTeacher) {
+      blit("teacherDesk", d.x - 2, d.y - 4);
+      blit("monitor", d.x + d.w / 2 - 18, d.y - 26);
+    } else {
+      blit("desk", d.x - 2, d.y - 2);
+      // subtle screen flicker via alternate brightness overlay
+      blit("monitor", d.x + d.w / 2 - 18, d.y - 24);
+      const glow = (Math.sin(frame * 0.05 + d.x * 0.08) + 1) * 0.5;
+      if (glow > 0.6) {
+        ctx.fillStyle = "rgba(136,208,240,0.12)";
+        fillRect(d.x + d.w / 2 - 14, d.y - 21, 26, 16);
+      }
+      blit("keyboard", d.x + 14, d.y + 2);
+      blit("mouse", d.x + d.w - 18, d.y + 3);
+    }
+  }
+
+  function drawFurniture() {
+    drawWhiteboard();
+    drawPosters();
+    for (const s of solids) {
+      if (s.kind === "teacherDesk") drawDeskUnit(s, true);
+      else if (s.kind === "desk") drawDeskUnit(s, false);
+      else if (s.kind === "round") blit("round", s.x - 2, s.y - 2);
+      else if (s.kind === "shelf") blit("shelf" + (s.tier || 0), s.x - 2, s.y - 1);
+      else if (s.kind === "cabinet") blit("cabinet", s.x, s.y);
+      else if (s.kind === "plant") {
+        const sway = Math.sin(frame * 0.03 + (s.style || 0)) * 1;
+        blit("plant" + (s.style || 0), s.x - 1 + sway, s.y - 6);
       }
     }
   }
 
-  /* ── desk / monitor / chair ── */
-  function drawChair(cx, cy) {
-    // shadow
-    fillRect(cx + 1, cy + 12, 14, 3, C.shadowSoft);
-    // seat
-    fillRect(cx, cy + 6, 14, 6, C.chairSeat);
-    fillRect(cx + 1, cy + 7, 12, 4, C.chair);
-    // back
-    fillRect(cx + 1, cy - 4, 12, 11, C.chairBack);
-    fillRect(cx + 2, cy - 3, 10, 8, C.chair);
-    // legs
-    fillRect(cx + 1, cy + 11, 2, 4, C.woodDark);
-    fillRect(cx + 11, cy + 11, 2, 4, C.woodDark);
-    // wheels hint
-    fillRect(cx, cy + 14, 3, 2, "#2a2830");
-    fillRect(cx + 11, cy + 14, 3, 2, "#2a2830");
-  }
-
-  function drawDesk(d, withMonitor) {
-    // chair behind/under (drawn first so desk covers)
-    drawChair(d.x + d.w / 2 - 7, d.y + d.h + 2);
-
-    // desk shadow
-    fillRect(d.x + 3, d.y + d.h - 1, d.w, 5, C.shadow);
-
-    // legs
-    fillRect(d.x + 4, d.y + 10, 4, d.h - 6, C.deskLeg);
-    fillRect(d.x + d.w - 8, d.y + 10, 4, d.h - 6, C.deskLeg);
-    fillRect(d.x + 5, d.y + 11, 2, d.h - 8, C.woodMid);
-
-    // top
-    fillRect(d.x, d.y, d.w, 11, C.deskTop);
-    fillRect(d.x, d.y + 9, d.w, 4, C.deskEdge);
-    fillRect(d.x + 1, d.y + 1, d.w - 2, 2, C.woodPale);
-    // front panel
-    fillRect(d.x + 2, d.y + 12, d.w - 4, 8, C.desk);
-    fillRect(d.x + 4, d.y + 14, d.w - 8, 2, C.deskEdge);
-
-    if (withMonitor) {
-      // stand
-      fillRect(d.x + d.w / 2 - 5, d.y - 2, 10, 5, C.monitorBezel);
-      fillRect(d.x + d.w / 2 - 8, d.y + 1, 16, 3, C.monitor);
-      // bezel
-      fillRect(d.x + d.w / 2 - 16, d.y - 22, 32, 22, C.monitorBezel);
-      fillRect(d.x + d.w / 2 - 14, d.y - 20, 28, 18, C.monitor);
-      // screen glow
-      const glow = (Math.sin(frame * 0.04 + d.x * 0.1) + 1) * 0.5;
-      const sc = glow > 0.55 ? C.monitorBright : glow > 0.25 ? C.monitorGlow : C.monitorScreen;
-      fillRect(d.x + d.w / 2 - 13, d.y - 19, 26, 16, sc);
-      // fake code lines on screen
-      fillRect(d.x + d.w / 2 - 11, d.y - 17, 10, 1, "rgba(255,255,255,0.5)");
-      fillRect(d.x + d.w / 2 - 11, d.y - 14, 16, 1, "rgba(200,255,200,0.4)");
-      fillRect(d.x + d.w / 2 - 11, d.y - 11, 8, 1, "rgba(255,255,200,0.35)");
-      fillRect(d.x + d.w / 2 - 11, d.y - 8, 14, 1, "rgba(200,255,200,0.3)");
-      // keyboard
-      fillRect(d.x + 14, d.y + 3, 36, 6, C.keyboard);
-      for (let k = 0; k < 7; k++) fillRect(d.x + 16 + k * 5, d.y + 4, 3, 2, C.keyCap);
-      fillRect(d.x + 20, d.y + 7, 18, 1, C.keyCap);
-      // mouse
-      fillRect(d.x + d.w - 16, d.y + 4, 6, 5, C.keyboard);
-      fillRect(d.x + d.w - 15, d.y + 5, 4, 2, C.keyCap);
-    }
-  }
-
-  function drawTeacherDesk(s) {
-    drawDesk(s, true);
-    // extra: papers + mug
-    fillRect(s.x + 6, s.y + 2, 12, 8, C.white);
-    fillRect(s.x + 7, s.y + 3, 10, 1, "#c0b8a8");
-    fillRect(s.x + 7, s.y + 5, 8, 1, "#c0b8a8");
-    // mug
-    fillRect(s.x + s.w - 18, s.y + 2, 8, 8, "#c85040");
-    fillRect(s.x + s.w - 17, s.y + 3, 6, 5, "#a03828");
-    fillRect(s.x + s.w - 10, s.y + 4, 3, 3, "#c85040");
-  }
-
-  function drawRoundTable(s) {
-    fillRect(s.x + 3, s.y + s.h - 2, s.w - 2, 5, C.shadow);
-    // approximate circle with rects
-    fillRect(s.x + 6, s.y, s.w - 12, s.h, C.desk);
-    fillRect(s.x, s.y + 6, s.w, s.h - 12, C.desk);
-    fillRect(s.x + 4, s.y + 2, s.w - 8, s.h - 4, C.deskTop);
-    fillRect(s.x + 8, s.y + 4, s.w - 16, s.h - 8, C.woodPale);
-    // center
-    fillRect(s.x + s.w / 2 - 3, s.y + s.h / 2 - 3, 6, 6, C.woodDark);
-    // notebooks on table
-    fillRect(s.x + 10, s.y + 12, 10, 8, C.book2);
-    fillRect(s.x + s.w - 20, s.y + 14, 10, 8, C.book1);
-  }
-
-  function drawShelf(s) {
-    fillRect(s.x, s.y, s.w, s.h, C.shelf);
-    fillRect(s.x + 1, s.y + 1, s.w - 2, s.h - 4, C.woodDark);
-    fillRect(s.x, s.y, 2, s.h, C.woodLight);
-    fillRect(s.x + s.w - 2, s.y, 2, s.h, C.woodLight);
-    const colors = [C.book1, C.book2, C.book3, C.book4, C.book5, C.book6];
-    const seed = s.tier || 0;
-    for (let i = 0; i < 7; i++) {
-      const bh = 10 + ((hash(i, seed) * 6) | 0);
-      const bw = 9 + ((hash(i + 3, seed) * 3) | 0);
-      fillRect(s.x + 4 + i * 12, s.y + s.h - 4 - bh, bw, bh, colors[(i + seed) % 6]);
-      fillRect(s.x + 5 + i * 12, s.y + s.h - 4 - bh, 1, bh, "rgba(255,255,255,0.2)");
-    }
-    fillRect(s.x, s.y + s.h - 3, s.w, 3, C.woodLight);
-  }
-
-  function drawCabinet(s) {
-    fillRect(s.x + 2, s.y + 3, s.w, s.h, C.shadow);
-    fillRect(s.x, s.y, s.w, s.h, C.wood);
-    fillRect(s.x + 1, s.y + 1, s.w - 2, 2, C.woodLight);
-    // doors
-    fillRect(s.x + 3, s.y + 5, s.w - 6, s.h / 2 - 7, C.woodDark);
-    fillRect(s.x + 3, s.y + s.h / 2 + 1, s.w - 6, s.h / 2 - 7, C.woodDark);
-    fillRect(s.x + 4, s.y + 6, s.w - 8, 1, C.woodMid);
-    // knobs
-    fillRect(s.x + s.w - 10, s.y + 12, 3, 3, C.uiAccent);
-    fillRect(s.x + s.w - 10, s.y + s.h / 2 + 8, 3, 3, C.uiAccent);
-  }
-
-  function drawPlant(s) {
-    const style = s.style || 0;
-    // pot
-    fillRect(s.x + 2, s.y + s.h - 10, s.w - 4, 10, C.plantPot);
-    fillRect(s.x + 3, s.y + s.h - 9, s.w - 6, 3, C.plantPotDark);
-    fillRect(s.x + 4, s.y + s.h - 11, s.w - 8, 3, C.plantDirt);
-    // foliage
-    const sway = Math.sin(frame * 0.03 + style) * 1;
-    if (style % 2 === 0) {
-      fillRect(s.x + 4 + sway, s.y + 2, 4, 10, C.plant);
-      fillRect(s.x + 8 + sway, s.y, 4, 12, C.greenLight);
-      fillRect(s.x + 2 + sway, s.y + 4, 5, 5, C.green);
-      fillRect(s.x + 9 + sway, s.y + 3, 5, 5, C.greenLeaf);
-      fillRect(s.x + 5 + sway, s.y + 6, 6, 4, C.greenDark);
-    } else {
-      fillRect(s.x + 6 + sway, s.y, 3, 12, C.plant);
-      fillRect(s.x + 2 + sway, s.y + 2, 6, 4, C.greenLight);
-      fillRect(s.x + 8 + sway, s.y + 4, 6, 4, C.green);
-      fillRect(s.x + 4 + sway, s.y + 7, 8, 4, C.greenLeaf);
-    }
-  }
-
-  /* ── zone labels ── */
   function drawZoneLabels() {
     ctx.textAlign = "left";
     for (const z of zones) {
       const active = highlightZone === z.id || hoverZone === z;
       fillRect(z.x, z.y, z.w, z.h, active ? C.highlight : z.color);
       if (active) {
-        // soft border
-        fillRect(z.x, z.y, z.w, 1, "rgba(240,193,75,0.5)");
-        fillRect(z.x, z.y + z.h - 1, z.w, 1, "rgba(240,193,75,0.5)");
-        fillRect(z.x, z.y, 1, z.h, "rgba(240,193,75,0.5)");
-        fillRect(z.x + z.w - 1, z.y, 1, z.h, "rgba(240,193,75,0.5)");
+        fillRect(z.x, z.y, z.w, 1, "rgba(240,193,75,0.55)");
+        fillRect(z.x, z.y + z.h - 1, z.w, 1, "rgba(240,193,75,0.55)");
+        fillRect(z.x, z.y, 1, z.h, "rgba(240,193,75,0.55)");
+        fillRect(z.x + z.w - 1, z.y, 1, z.h, "rgba(240,193,75,0.55)");
       }
       const label = z.key + " · " + z.name;
       ctx.font = "bold 9px monospace";
       const tw = ctx.measureText(label).width;
-      fillRect(z.x + 4, z.y + 4, tw + 10, 13, "rgba(255,248,238,0.88)");
+      fillRect(z.x + 4, z.y + 4, tw + 10, 13, "rgba(255,248,238,0.90)");
       fillRect(z.x + 4, z.y + 4, 3, 13, C.uiAccent);
       fillRect(z.x + 4, z.y + 16, tw + 10, 1, "rgba(196,154,108,0.6)");
       ctx.fillStyle = C.zoneLabel;
@@ -821,212 +525,98 @@
     }
   }
 
-  /* ── characters ── */
-  function drawPerson(x, y, color, facing, walkPhase, isTeacher, hairCol) {
-    const bob = Math.abs(Math.sin(walkPhase || 0)) * 1.2;
-    const py = Math.round(y - bob);
-    const px = Math.round(x);
-    const hair = hairCol || (isTeacher ? C.teacherHair : C.studentHair[0]);
-    const pants = isTeacher ? C.teacherPants : "#3a3048";
-    const skin = C.teacherSkin;
-    const skinS = C.teacherSkinShade;
+  function walkFrame(phase) {
+    if (!phase) return 0;
+    return ((phase * 1.5) | 0) % 4;
+  }
 
-    // shadow
-    fillRect(px + 1, y + 14, 11, 3, C.shadow);
+  function drawTeacherSprite() {
+    const f = walkFrame(teacher.walkPhase);
+    const name = "teacher_" + teacher.facing + "_" + f;
+    blit(name, teacher.x - 1, teacher.y - 2);
+  }
 
-    // legs
-    const leg = Math.sin(walkPhase || 0) * 2.2;
-    fillRect(px + 2, py + 11, 3, 5, pants);
-    fillRect(px + 8, py + 11, 3, 5, pants);
-    if (walkPhase) {
-      fillRect(px + 2, py + 14, 3, 2 + (leg > 0 ? 1 : 0), C.teacherShoe);
-      fillRect(px + 8, py + 14, 3, 2 + (leg < 0 ? 1 : 0), C.teacherShoe);
+  function drawStudentSprite(s) {
+    if (s.seated) {
+      const bob = Math.sin(s.bob) * 0.6;
+      blit("student_sit_" + s.sprite, s.x, s.y + bob);
     } else {
-      fillRect(px + 2, py + 15, 3, 2, C.teacherShoe);
-      fillRect(px + 8, py + 15, 3, 2, C.teacherShoe);
-    }
-
-    // body
-    fillRect(px + 1, py + 5, 11, 7, color);
-    if (isTeacher) {
-      fillRect(px + 1, py + 5, 11, 7, C.teacherShirt);
-      fillRect(px + 1, py + 5, 11, 2, C.teacherShirtDark);
-      // collar
-      fillRect(px + 4, py + 5, 5, 2, C.white);
-      // badge
-      fillRect(px + 9, py + 8, 2, 2, C.uiAccent);
-    } else {
-      fillRect(px + 2, py + 5, 9, 1, "rgba(255,255,255,0.15)");
-    }
-
-    // arms hint
-    fillRect(px, py + 6, 2, 5, color);
-    fillRect(px + 11, py + 6, 2, 5, color);
-
-    // head
-    fillRect(px + 2, py - 2, 9, 8, skin);
-    fillRect(px + 3, py + 4, 7, 1, skinS);
-
-    // hair by facing
-    if (facing === 3) {
-      // back of head
-      fillRect(px + 2, py - 3, 9, 9, hair);
-      fillRect(px + 1, py - 1, 2, 4, hair);
-      fillRect(px + 10, py - 1, 2, 4, hair);
-    } else {
-      fillRect(px + 2, py - 3, 9, 4, hair);
-      if (isTeacher) {
-        fillRect(px + 1, py - 1, 2, 4, hair); // sideburn
-        fillRect(px + 10, py - 1, 2, 3, hair);
-      }
-      // bangs
-      fillRect(px + 3, py - 1, 2, 2, hair);
-      fillRect(px + 8, py - 1, 2, 2, hair);
-    }
-
-    // eyes
-    const eyeY = py + 1;
-    if (facing === 1) {
-      fillRect(px + 3, eyeY, 2, 2, C.black);
-      fillRect(px + 3, eyeY, 1, 1, C.white);
-    } else if (facing === 2) {
-      fillRect(px + 8, eyeY, 2, 2, C.black);
-      fillRect(px + 9, eyeY, 1, 1, C.white);
-    } else if (facing !== 3) {
-      fillRect(px + 3, eyeY, 2, 2, C.black);
-      fillRect(px + 8, eyeY, 2, 2, C.black);
-      fillRect(px + 3, eyeY, 1, 1, C.white);
-      fillRect(px + 8, eyeY, 1, 1, C.white);
+      const f = walkFrame(s.walkPhase || 0);
+      blit("student_walk_" + s.facing + "_" + f, s.x - 1, s.y - 2);
     }
   }
 
-  function drawSeatedPerson(x, y, color, hairCol, bob) {
-    const py = Math.round(y + Math.sin(bob) * 0.6);
-    const px = Math.round(x);
-    const hair = hairCol || C.studentHair[0];
-    // shadow
-    fillRect(px + 1, y + 10, 12, 3, C.shadowSoft);
-    // legs under desk (short)
-    fillRect(px + 2, py + 8, 4, 4, "#3a3048");
-    fillRect(px + 8, py + 8, 4, 4, "#3a3048");
-    // torso
-    fillRect(px + 1, py + 3, 11, 7, color);
-    fillRect(px + 2, py + 3, 9, 1, "rgba(255,255,255,0.12)");
-    // arms on desk
-    fillRect(px - 1, py + 5, 3, 4, color);
-    fillRect(px + 11, py + 5, 3, 4, color);
-    // head (facing up / away slightly — toward monitor)
-    fillRect(px + 2, py - 4, 9, 8, C.studentSkin);
-    fillRect(px + 2, py - 5, 9, 4, hair);
-    fillRect(px + 1, py - 3, 2, 3, hair);
-    fillRect(px + 10, py - 3, 2, 3, hair);
-    // eyes (from behind-ish / top of head visible)
-    fillRect(px + 3, py - 1, 2, 2, C.black);
-    fillRect(px + 8, py - 1, 2, 2, C.black);
-  }
-
-  function drawCat() {
-    const cx = Math.round(cat.x), cy = Math.round(cat.y);
-    const flip = cat.facing === 1;
-    fillRect(cx + 1, cy + 9, 16, 3, C.shadowSoft);
-
+  function drawCatSprite() {
+    const cx = cat.x, cy = cat.y;
     if (cat.moving) {
-      const bob = Math.abs(Math.sin(cat.walkPhase)) * 1;
-      const py = cy - bob;
-      // body
-      fillRect(cx + (flip ? 4 : 0), py + 3, 12, 7, C.cat);
-      fillRect(cx + (flip ? 5 : 1), py + 4, 10, 4, C.catDark);
-      // head
-      const hx = flip ? cx : cx + 10;
-      fillRect(hx, py - 1, 9, 8, C.cat);
-      fillRect(hx + 1, py, 7, 5, C.catLight);
-      // ears
-      fillRect(hx, py - 3, 3, 3, C.cat);
-      fillRect(hx + 6, py - 3, 3, 3, C.cat);
-      fillRect(hx + 1, py - 2, 1, 2, C.catDark);
-      fillRect(hx + 7, py - 2, 1, 2, C.catDark);
-      // eyes
-      fillRect(hx + 2, py + 2, 2, 2, C.catEye);
-      fillRect(hx + 5, py + 2, 2, 2, C.catEye);
-      // legs
-      const leg = Math.sin(cat.walkPhase) * 2;
-      fillRect(cx + 2, py + 9, 3, 3 + (leg > 0 ? 1 : 0), C.catDark);
-      fillRect(cx + 10, py + 9, 3, 3 + (leg < 0 ? 1 : 0), C.catDark);
-      // tail
-      const tw = Math.sin(frame * 0.12) * 3;
-      fillRect(cx + (flip ? 14 : -5) + tw, py + 4, 6, 3, C.cat);
-    } else {
-      // loaf / asleep
-      fillRect(cx, cy + 3, 14, 8, C.cat);
-      fillRect(cx + 1, cy + 4, 12, 5, C.catDark);
-      fillRect(cx + 10, cy - 1, 9, 8, C.cat);
-      fillRect(cx + 11, cy, 7, 5, C.catLight);
-      fillRect(cx + 10, cy - 3, 3, 3, C.cat);
-      fillRect(cx + 16, cy - 3, 3, 3, C.cat);
-      fillRect(cx + 11, cy - 2, 1, 2, C.catDark);
-      fillRect(cx + 17, cy - 2, 1, 2, C.catDark);
-      fillRect(cx + 14, cy + 3, 2, 2, C.catNose);
-      if (cat.asleep) {
-        fillRect(cx + 12, cy + 2, 3, 1, C.catEye);
-        fillRect(cx + 16, cy + 2, 3, 1, C.catEye);
-        if (frame % 50 < 25) {
-          ctx.fillStyle = C.uiDim;
-          ctx.font = "6px monospace";
-          ctx.textAlign = "left";
-          ctx.fillText("z", cx + 22, cy);
-          if (frame % 50 < 12) ctx.fillText("z", cx + 26, cy - 4);
-        }
-      } else {
-        fillRect(cx + 12, cy + 1, 2, 2, C.catEye);
-        fillRect(cx + 16, cy + 1, 2, 2, C.catEye);
-        fillRect(cx + 12, cy + 1, 1, 1, C.white);
-        fillRect(cx + 16, cy + 1, 1, 1, C.white);
+      const f = ((cat.walkPhase * 1.2) | 0) % 4;
+      const dir = cat.facing === 1 ? 1 : 2;
+      blit("cat_walk_" + dir + "_" + f, cx, cy - Math.abs(Math.sin(cat.walkPhase)));
+    } else if (cat.asleep) {
+      blit("cat_sleep", cx, cy);
+      if (frame % 50 < 25) {
+        ctx.fillStyle = C.uiDim;
+        ctx.font = "6px monospace";
+        ctx.textAlign = "left";
+        ctx.fillText("z", cx + 22, cy);
+        if (frame % 50 < 12) ctx.fillText("z", cx + 26, cy - 4);
       }
-      const tw = Math.sin(frame * 0.07) * 2;
-      fillRect(cx - 5 + tw, cy + 5, 6, 3, C.cat);
+    } else {
+      blit("cat_loaf", cx, cy);
     }
   }
 
-  /* ── lighting ── */
+  function drawEntities() {
+    const ents = [];
+    for (const s of students) {
+      ents.push({
+        y: s.seated ? s.y + 10 : s.y + 14,
+        draw: () => drawStudentSprite(s),
+      });
+    }
+    ents.push({ y: cat.y + 12, draw: drawCatSprite });
+    ents.push({ y: teacher.y + teacher.h, draw: drawTeacherSprite });
+    ents.sort((a, b) => a.y - b.y);
+    for (const e of ents) e.draw();
+  }
+
   function drawLighting() {
-    // warm window light shafts
-    const windows = [
-      room.x + 178, room.x + 272, room.x + 366,
-    ];
+    const windows = [room.x + 178, room.x + 272, room.x + 366];
     for (const wx of windows) {
-      ctx.fillStyle = C.warmGlow;
-      // soft shaft downward
-      for (let i = 0; i < 8; i++) {
-        const alpha = 0.04 - i * 0.004;
-        ctx.fillStyle = "rgba(255,210,120," + Math.max(0, alpha) + ")";
-        fillRect(wx + 8 - i * 2, WALL_T + i * 8, 62 + i * 4, 10);
+      // warm shaft using atlas glow stretched
+      blitStretch("warmGlow", wx - 10, WALL_T - 4, 90, 120);
+      for (let i = 0; i < 6; i++) {
+        ctx.fillStyle = "rgba(255,210,120," + (0.035 - i * 0.004) + ")";
+        fillRect(wx + 6 - i * 2, WALL_T + i * 10, 66 + i * 4, 12);
       }
     }
-    // vignette via corner darkening
-    ctx.fillStyle = "rgba(18,12,8,0.35)";
-    fillRect(0, 0, 28, H);
-    fillRect(W - 28, 0, 28, H);
-    fillRect(0, 0, W, 10);
-    ctx.fillStyle = "rgba(18,12,8,0.22)";
-    fillRect(0, 0, 48, H - BAR_H);
-    fillRect(W - 48, 0, 48, H - BAR_H);
-    fillRect(0, room.y + room.h - 20, W, 20);
-    // warm overall wash
-    ctx.fillStyle = C.warmLight;
+    // corner vignettes
+    blitStretch("vignetteCorner", 0, 0, 80, 80);
+    ctx.save();
+    ctx.translate(W, 0); ctx.scale(-1, 1);
+    blitStretch("vignetteCorner", 0, 0, 80, 80);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(0, H - BAR_H); ctx.scale(1, -1);
+    blitStretch("vignetteCorner", 0, 0, 80, 70);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(W, H - BAR_H); ctx.scale(-1, -1);
+    blitStretch("vignetteCorner", 0, 0, 80, 70);
+    ctx.restore();
+    // warm wash
+    ctx.fillStyle = "rgba(255,220,150,0.08)";
     fillRect(room.x, room.y, room.w, room.h);
   }
 
-  /* ── UI ── */
   function drawUIBar() {
     const barY = H - BAR_H;
     fillRect(0, barY, W, BAR_H, C.uiPanel);
     fillRect(0, barY, W, 2, C.uiPanelBorder);
     fillRect(0, barY + 2, W, 1, C.uiAccent);
-    // subtle inner
     fillRect(0, barY + 3, W, BAR_H - 3, C.uiPanelMid);
     fillRect(0, barY + 3, W, 1, "rgba(255,248,238,0.06)");
 
-    // period chip
     fillRect(8, barY + 9, 128, 20, C.uiChip);
     fillRect(8, barY + 9, 3, 20, C.uiAccent);
     fillRect(8, barY + 9, 128, 1, "rgba(240,193,75,0.35)");
@@ -1035,12 +625,10 @@
     ctx.textAlign = "left";
     ctx.fillText("第 3 節 · 中四 ICT", 16, barY + 23);
 
-    // teacher / room
     ctx.fillStyle = C.uiDim;
     ctx.font = "8px monospace";
     ctx.fillText("Tsao Lap Cheung · 電腦室", 146, barY + 23);
 
-    // task chip
     const chipX = W - 180;
     fillRect(chipX, barY + 9, 168, 20, C.uiChipAlt);
     fillRect(chipX, barY + 9, 3, 20, "#68a858");
@@ -1056,18 +644,13 @@
     if (!panel) return;
     const { x, y, title, info } = panel;
     const pw = 180, ph = 64;
-    // drop shadow
     fillRect(x + 3, y + 3, pw, ph, "rgba(0,0,0,0.45)");
-    // body
     fillRect(x, y, pw, ph, C.uiPanel);
     fillRect(x + 2, y + 2, pw - 4, ph - 4, C.uiPanelMid);
-    // gold top bar
     fillRect(x, y, pw, 3, C.uiAccent);
-    // borders
     fillRect(x, y, 2, ph, C.uiPanelBorder);
     fillRect(x + pw - 2, y, 2, ph, C.uiPanelBorder);
     fillRect(x, y + ph - 2, pw, 2, C.uiPanelBorder);
-    // corner ticks
     fillRect(x, y, 8, 2, C.uiAccent);
     fillRect(x + pw - 8, y, 8, 2, C.uiAccent);
 
@@ -1084,8 +667,7 @@
       const test = line + ch;
       if (ctx.measureText(test).width > maxW) {
         ctx.fillText(line, x + 10, ly);
-        line = ch;
-        ly += 11;
+        line = ch; ly += 11;
         if (ly > y + ph - 14) break;
       } else line = test;
     }
@@ -1097,9 +679,7 @@
   }
 
   function drawTitle() {
-    // dim scene behind
     fillRect(0, 0, W, H, C.overlay);
-
     const tw = 340, th = 160;
     const tx = (W - tw) / 2, ty = (H - th) / 2 - 8;
     fillRect(tx + 4, ty + 4, tw, th, "rgba(0,0,0,0.5)");
@@ -1110,17 +690,16 @@
     fillRect(tx + tw - 3, ty, 3, th, C.uiPanelBorder);
     fillRect(tx, ty + th - 3, tw, 3, C.uiPanelBorder);
 
-    // decorative pixels
-    fillRect(tx + 14, ty + 14, 10, 10, C.monitorGlow);
-    fillRect(tx + tw - 24, ty + 14, 10, 10, C.greenLight);
-    fillRect(tx + 14, ty + th - 24, 10, 10, C.book1);
-    fillRect(tx + tw - 24, ty + th - 24, 10, 10, C.uiAccent);
+    // atlas decorations
+    blit("monitor", tx + 16, ty + 18);
+    blit("plant0", tx + tw - 40, ty + 20);
+    blit("cat_loaf", tx + 20, ty + th - 36);
+    blit("poster0", tx + tw - 48, ty + th - 48);
 
     ctx.textAlign = "center";
     ctx.fillStyle = C.titleGold;
     ctx.font = "bold 32px monospace";
     ctx.fillText("像素課室", W / 2, ty + 52);
-    // underline
     fillRect(W / 2 - 60, ty + 58, 120, 2, C.uiAccent);
 
     ctx.fillStyle = C.titleCream;
@@ -1143,44 +722,6 @@
     ctx.fillStyle = "rgba(255,248,238,0.45)";
     ctx.font = "7px monospace";
     ctx.fillText("WASD／方向鍵移動 · 點擊區域 · 1–4 高亮 · Esc 關閉", room.x + 6, room.y + room.h - 8);
-  }
-
-  /* ── compose ── */
-  function drawFurniture() {
-    drawWhiteboard();
-    drawPosters();
-    for (const s of solids) {
-      if (s.kind === "teacherDesk") drawTeacherDesk(s);
-      else if (s.kind === "desk") drawDesk(s, true);
-      else if (s.kind === "round") drawRoundTable(s);
-      else if (s.kind === "shelf") drawShelf(s);
-      else if (s.kind === "cabinet") drawCabinet(s);
-      else if (s.kind === "plant") drawPlant(s);
-    }
-  }
-
-  function drawEntities() {
-    const ents = [];
-    for (const s of students) {
-      if (s.seated) {
-        ents.push({
-          y: s.y + 10,
-          draw: () => drawSeatedPerson(s.x, s.y, s.color, s.hair, s.bob),
-        });
-      } else {
-        ents.push({
-          y: s.y + 14,
-          draw: () => drawPerson(s.x, s.y, s.color, s.facing, s.walkPhase || 0, false, s.hair),
-        });
-      }
-    }
-    ents.push({ y: cat.y + 12, draw: drawCat });
-    ents.push({
-      y: teacher.y + teacher.h,
-      draw: () => drawPerson(teacher.x, teacher.y, C.teacherShirt, teacher.facing, teacher.walkPhase, true),
-    });
-    ents.sort((a, b) => a.y - b.y);
-    for (const e of ents) e.draw();
   }
 
   function update() {
@@ -1218,6 +759,7 @@
     requestAnimationFrame(loop);
   }
 
+  // start immediately; atlas loads async but is tiny/data-uri so near-instant
   loop();
 })();
 </script>
