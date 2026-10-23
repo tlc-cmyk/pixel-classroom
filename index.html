@@ -3,30 +3,37 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#8b5e3c">
+<meta name="theme-color" content="#1a1008">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <title>像素課室 · 中四 ICT · Lap Cheung Tsao</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
-    width: 100%; height: 100%;
+    width: 100%;
+    height: 100%;
+    height: 100svh;
     height: 100dvh;
-    background: #1a1008;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: #0e0906;
     overflow: hidden;
-    font-family: "Courier New", "PingFang HK", "Noto Sans TC", "Microsoft JhengHei", monospace;
+    font-family: "PingFang HK", "Noto Sans TC", "Microsoft JhengHei", "Courier New", monospace;
     touch-action: none;
     overscroll-behavior: none;
+    position: fixed;
+    inset: 0;
   }
   #wrap {
-    position: relative;
-    width: min(100vw, calc(100dvh * 16 / 9));
-    height: min(100dvh, calc(100vw * 9 / 16));
-    max-width: 100vw;
-    max-height: 100dvh;
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100svh;
+    height: 100dvh;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    background: #120c08;
   }
   canvas {
     display: block;
@@ -36,78 +43,123 @@
     image-rendering: crisp-edges;
     image-rendering: -moz-crisp-edges;
     background: #120c08;
-    border: 4px solid #5c3a22;
-    box-shadow:
-      0 0 0 2px #c49a6c,
-      0 0 40px rgba(0,0,0,0.65),
-      inset 0 0 0 1px #2a1810;
     cursor: crosshair;
   }
-  /* On-screen D-pad */
+  /* D-pad — bottom-left, thumb zone */
   #dpad {
     display: none;
     position: absolute;
-    left: max(8px, env(safe-area-inset-left));
-    bottom: max(10px, env(safe-area-inset-bottom));
-    width: 148px;
-    height: 148px;
-    z-index: 5;
+    left: max(10px, env(safe-area-inset-left));
+    bottom: max(14px, env(safe-area-inset-bottom));
+    width: 176px;
+    height: 176px;
+    z-index: 8;
     user-select: none;
     touch-action: none;
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.55));
   }
   #dpad.show { display: block; }
   #dpad .btn {
     position: absolute;
-    width: 48px;
-    height: 48px;
-    border-radius: 10px;
-    background: rgba(46,30,18,0.82);
-    border: 3px solid #c49a6c;
-    box-shadow: inset 0 0 0 1px #f0c14b55;
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(70,46,28,0.92), rgba(40,26,16,0.92));
+    border: 3px solid #d4a86a;
+    box-shadow: inset 0 1px 0 rgba(255,240,200,0.25), inset 0 -2px 0 rgba(0,0,0,0.35);
     color: #fff8ee;
-    font-size: 22px;
+    font-size: 24px;
     font-weight: bold;
     display: flex;
     align-items: center;
     justify-content: center;
     line-height: 1;
   }
-  #dpad .btn.active { background: rgba(240,193,75,0.55); border-color: #f0c14b; }
-  #dpad .up { left: 50px; top: 0; }
-  #dpad .down { left: 50px; bottom: 0; }
-  #dpad .left { left: 0; top: 50px; }
-  #dpad .right { right: 0; top: 50px; }
+  #dpad .btn.active {
+    background: linear-gradient(180deg, rgba(240,193,75,0.75), rgba(180,120,40,0.85));
+    border-color: #ffe08a;
+    transform: scale(0.96);
+  }
+  #dpad .up { left: 60px; top: 0; }
+  #dpad .down { left: 60px; bottom: 0; }
+  #dpad .left { left: 0; top: 60px; }
+  #dpad .right { right: 0; top: 60px; }
   #dpad .center {
-    left: 50px; top: 50px; width: 48px; height: 48px;
-    border-radius: 50%; opacity: 0.35; pointer-events: none;
-    font-size: 11px;
+    left: 60px; top: 60px; width: 56px; height: 56px;
+    border-radius: 50%; opacity: 0.4; pointer-events: none;
+    font-size: 12px; border-style: dashed;
   }
-  @media (min-width: 900px) and (hover: hover) {
-    #wrap {
-      width: min(1280px, 96vw);
-      height: min(720px, 92vh);
-      aspect-ratio: 16 / 9;
-    }
-    canvas { border-width: 6px; }
+  /* Action cluster — bottom-right */
+  #actions {
+    display: none;
+    position: absolute;
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(18px, env(safe-area-inset-bottom));
+    z-index: 8;
+    user-select: none;
+    touch-action: none;
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-end;
   }
-  @media (orientation: portrait) and (max-width: 900px) {
-    #wrap {
-      width: 100vw;
-      height: auto;
-      aspect-ratio: 16 / 9;
-      max-height: 78dvh;
+  #actions.show { display: flex; }
+  #actions .abtn {
+    min-width: 72px;
+    height: 72px;
+    padding: 0 14px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, rgba(70,46,28,0.94), rgba(36,24,14,0.94));
+    border: 3px solid #d4a86a;
+    box-shadow: inset 0 1px 0 rgba(255,240,200,0.22), 0 4px 12px rgba(0,0,0,0.45);
+    color: #fff8ee;
+    font-size: 15px;
+    font-weight: bold;
+    font-family: inherit;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    line-height: 1.1;
+  }
+  #actions .abtn .ico { font-size: 22px; line-height: 1; }
+  #actions .abtn.active, #actions .abtn:active {
+    background: linear-gradient(180deg, rgba(240,193,75,0.8), rgba(160,100,30,0.9));
+    border-color: #ffe08a;
+  }
+  #actions .abtn.close {
+    min-width: 64px; height: 64px;
+    border-color: #c87858;
+    background: linear-gradient(180deg, rgba(90,40,28,0.94), rgba(50,22,16,0.94));
+  }
+  /* Desktop: keep aspect, centered, no forced letterbox waste on phone */
+  @media (min-width: 700px) and (hover: hover) and (pointer: fine) {
+    html, body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1a1008;
+      position: static;
     }
-    #dpad { width: 168px; height: 168px; }
-    #dpad .btn { width: 54px; height: 54px; font-size: 26px; }
-    #dpad .up, #dpad .down { left: 57px; }
-    #dpad .left, #dpad .right { top: 57px; }
-    #dpad .center { left: 57px; top: 57px; width: 54px; height: 54px; }
+    #wrap {
+      position: relative;
+      width: min(420px, 42vw);
+      height: min(746px, 94dvh);
+      inset: auto;
+      padding: 0;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 3px #5c3a22,
+        0 0 0 5px #c49a6c,
+        0 20px 60px rgba(0,0,0,0.65);
+    }
   }
 </style>
 </head>
 <body>
 <div id="wrap">
-<canvas id="game" width="640" height="360"></canvas>
+<canvas id="game" width="360" height="640"></canvas>
 <div id="dpad" aria-hidden="true">
   <div class="btn up" data-dir="up">▲</div>
   <div class="btn left" data-dir="left">◀</div>
@@ -115,17 +167,21 @@
   <div class="btn right" data-dir="right">▶</div>
   <div class="btn down" data-dir="down">▼</div>
 </div>
+<div id="actions" aria-hidden="true">
+  <button type="button" class="abtn close" id="btnClose" title="關閉"><span class="ico">✕</span><span>關閉</span></button>
+  <button type="button" class="abtn" id="btnAct" title="互動"><span class="ico">✦</span><span>互動</span></button>
+</div>
 </div>
 <script>
 (function () {
   "use strict";
 
-  const W = 640, H = 360;
+  /* Portrait logical canvas — phone 9:16 */
+  const W = 360, H = 640;
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
 
-  /* ── embedded atlas (offline, no CDN) ── */
   const ATLAS_URI = "data:image/png;base64,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m967oGXxP8vS1Fa9d/QOzel51veXBaesXqVpmiaaJvU/zfghaywXqS33er32b225+cfQeG687nVMui768uPaQ9303Hi98ZpeXy7Ly41l7q+LVJ87pquOYVV31zmd/L146ZVXnySct5AA2INX0CBG+XDl7cHfbxJgD/5+kwB78PebBNiDv98kwB78s5oELE1t1Z1eiyMoJ72/rCiu6dGWg3g90IspiGvLwb+RCChe9wr+RuDXfNR0PW43B3qHJGB5/VqQbwr8iteNZc8865wA6CKvdmgQ6yIBaCEBcApefoMY5cOVdwr+XkmAU/D3SgKcgr9XEuAU/L2SAKfgn7UkYGlqq95T6le+dqyyEHlATnp/WUwAVAE+SOvfKfirAr/mkgUYwdueCDglAWF6AczLfCQAxzvsK1EgAQiv2/xkbnrCGqBGJgJtLOvlWxV2/7smrettHvNX7sDMdmugHt7mq9zOO6zb37LV3/7mpsat7290h69ykzusxzU2vj2T/1kGR2rv90eVR+R1pYtlbno89n3ZfXvHML9aYg3+Tcs0SwtHs3bpa5ZufbfgbymnCv6mdXRdF02rBen6Yem6rotmSgLMyxvb13XNSAJqm9IsSYUmoom2XManTukJ6OJ/QQQ9ACIi1b2T+sDw1npguaMeULbK4eoxX62NLJePogdgbnpCzPs3Hhd7el3L24/bXM5t/37Kqco7lfOqp6TLpan1bzzuKfVLdWpeiqNlOVZZsKwXVas86f1luQfArftf1fq3d/37Cf6aNbnQTC1/3ZwImHsDnHoCVEMBTr0ATsMAPnsAXhXRc54EaF31BIAegKgSgIWFBenvr3U9Go+LG8d8B+Asl291DkB176Retf1Ibx6f8izvVM5r/17lnMqrypVGt2th3l+c5dKYALiJIwFIYn9Zc+rJPZol2Lt0/xu9A5ZlmmmZ2JMCS89CU9A39mtvjBtRXhd7F74psFtf05u6/EWxTG8tAdBzOhygiRRIACJOAPRjR/XXjX5Win0XNF783mffKlrPab5+aLJefmBkm24uKyIyd9s7fZX97pUX6319fY6vl3ZMK7dz8c1XupabHtuhLHfllXe5ltt3/GfK47/ryptdyw3tUCdL9998tmu58tisstxlN9/mWm5ybCT1QWxpaqteqVRc1ymVSpEmAEnuL4sJgNP4f1NPgMvYv7317xb8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";
   const SPR = {"floor0":{"x":0,"y":0,"w":32,"h":16},"floor1":{"x":34,"y":0,"w":32,"h":16},"floor2":{"x":68,"y":0,"w":32,"h":16},"floor3":{"x":102,"y":0,"w":32,"h":16},"carpet":{"x":0,"y":20,"w":16,"h":16},"wall":{"x":20,"y":20,"w":64,"h":28},"window":{"x":90,"y":20,"w":44,"h":34},"door":{"x":140,"y":20,"w":20,"h":66},"board":{"x":0,"y":90,"w":160,"h":56},"poster0":{"x":170,"y":90,"w":30,"h":28},"poster1":{"x":210,"y":90,"w":30,"h":28},"monitor":{"x":250,"y":90,"w":36,"h":28},"keyboard":{"x":290,"y":90,"w":40,"h":8},"mouse":{"x":340,"y":90,"w":8,"h":6},"chair":{"x":360,"y":90,"w":18,"h":20},"desk":{"x":0,"y":160,"w":72,"h":32},"teacherDesk":{"x":80,"y":160,"w":76,"h":36},"round":{"x":170,"y":160,"w":48,"h":48},"shelf0":{"x":230,"y":160,"w":92,"h":24},"shelf1":{"x":326,"y":160,"w":92,"h":24},"shelf2":{"x":230,"y":188,"w":92,"h":24},"shelf3":{"x":326,"y":188,"w":92,"h":24},"cabinet":{"x":0,"y":210,"w":42,"h":46},"plant0":{"x":50,"y":210,"w":20,"h":28},"plant1":{"x":74,"y":210,"w":20,"h":28},"plant2":{"x":98,"y":210,"w":20,"h":28},"plant3":{"x":122,"y":210,"w":20,"h":28},"teacher_0_0":{"x":0,"y":270,"w":10,"h":14},"teacher_0_1":{"x":16,"y":270,"w":10,"h":14},"teacher_0_2":{"x":32,"y":270,"w":10,"h":14},"teacher_0_3":{"x":48,"y":270,"w":10,"h":14},"teacher_3_0":{"x":64,"y":270,"w":10,"h":14},"teacher_3_1":{"x":80,"y":270,"w":10,"h":14},"teacher_3_2":{"x":96,"y":270,"w":10,"h":14},"teacher_3_3":{"x":112,"y":270,"w":10,"h":14},"teacher_2_0":{"x":0,"y":300,"w":10,"h":13},"teacher_2_1":{"x":16,"y":300,"w":10,"h":13},"teacher_2_2":{"x":32,"y":300,"w":10,"h":13},"teacher_2_3":{"x":48,"y":300,"w":10,"h":13},"teacher_1_0":{"x":0,"y":330,"w":10,"h":13},"teacher_1_1":{"x":16,"y":330,"w":10,"h":13},"teacher_1_2":{"x":32,"y":330,"w":10,"h":13},"teacher_1_3":{"x":48,"y":330,"w":10,"h":13},"student_sit_0":{"x":80,"y":270,"w":10,"h":11},"student_sit_1":{"x":94,"y":270,"w":10,"h":11},"student_sit_2":{"x":108,"y":270,"w":10,"h":11},"student_sit_3":{"x":122,"y":270,"w":10,"h":11},"student_sit_4":{"x":136,"y":270,"w":10,"h":11},"student_sit_5":{"x":150,"y":270,"w":10,"h":11},"student_walk_0_0":{"x":80,"y":300,"w":10,"h":11},"student_walk_0_1":{"x":94,"y":300,"w":10,"h":11},"student_walk_0_2":{"x":108,"y":300,"w":10,"h":11},"student_walk_0_3":{"x":122,"y":300,"w":10,"h":11},"student_walk_1_0":{"x":80,"y":316,"w":10,"h":11},"student_walk_1_1":{"x":94,"y":316,"w":10,"h":11},"student_walk_1_2":{"x":108,"y":316,"w":10,"h":11},"student_walk_1_3":{"x":122,"y":316,"w":10,"h":11},"student_walk_2_0":{"x":80,"y":332,"w":10,"h":11},"student_walk_2_1":{"x":94,"y":332,"w":10,"h":11},"student_walk_2_2":{"x":108,"y":332,"w":10,"h":11},"student_walk_2_3":{"x":122,"y":332,"w":10,"h":11},"student_walk_3_0":{"x":80,"y":348,"w":10,"h":11},"student_walk_3_1":{"x":94,"y":348,"w":10,"h":11},"student_walk_3_2":{"x":108,"y":348,"w":10,"h":11},"student_walk_3_3":{"x":122,"y":348,"w":10,"h":11},"cat_loaf":{"x":200,"y":270,"w":10,"h":8},"cat_sleep":{"x":228,"y":270,"w":10,"h":8},"cat_walk_2_0":{"x":200,"y":288,"w":10,"h":8},"cat_walk_1_0":{"x":200,"y":306,"w":10,"h":8},"cat_walk_2_1":{"x":218,"y":288,"w":10,"h":8},"cat_walk_1_1":{"x":218,"y":306,"w":10,"h":8},"cat_walk_2_2":{"x":236,"y":288,"w":10,"h":8},"cat_walk_1_2":{"x":236,"y":306,"w":10,"h":8},"cat_walk_2_3":{"x":254,"y":288,"w":10,"h":8},"cat_walk_1_3":{"x":254,"y":306,"w":10,"h":8},"warmGlow":{"x":300,"y":270,"w":64,"h":64},"vignetteCorner":{"x":370,"y":270,"w":64,"h":64}};
 
@@ -185,7 +241,6 @@
     }
   }
 
-  /* ── palette (UI / fallbacks) ── */
   const C = {
     bg: "#120c08",
     wall: "#f0e0c8", wallDark: "#d4bc98",
@@ -196,15 +251,14 @@
     uiPanel: "#2e1e12", uiPanelMid: "#3e2a1a", uiPanelBorder: "#c49a6c",
     uiAccent: "#f0c14b", uiChip: "#4a3424", uiChipAlt: "#3a5030",
     titleGold: "#f0c14b", titleCream: "#fff8ee",
-    highlight: "rgba(240,193,75,0.28)",
-    zoneTint1: "rgba(46,107,74,0.14)",
-    zoneTint2: "rgba(58,110,165,0.14)",
-    zoneTint3: "rgba(200,100,70,0.12)",
-    zoneTint4: "rgba(160,90,50,0.14)",
+    highlight: "rgba(240,193,75,0.30)",
+    zoneTint1: "rgba(46,107,74,0.16)",
+    zoneTint2: "rgba(58,110,165,0.16)",
+    zoneTint3: "rgba(200,100,70,0.14)",
+    zoneTint4: "rgba(160,90,50,0.16)",
     zoneLabel: "#2e1e12",
-    overlay: "rgba(18,12,8,0.82)",
+    overlay: "rgba(12,8,4,0.88)",
     chalk: "#e8f0e0", chalkY: "#f0e080", chalkDim: "#b8c8b0",
-    shadow: "rgba(30,18,8,0.40)",
     white: "#fff8ee",
   };
 
@@ -215,110 +269,117 @@
   let highlightZone = -1;
   let highlightTimer = 0;
 
-  const WALL_T = 28;
-  const WALL_S = 20;
-  const BAR_H = 52;
+  /* Tall portrait room — stacked zones fill the phone */
+  const WALL_T = 40;
+  const WALL_S = 10;
+  const BAR_H = 64;
   const room = {
     x: WALL_S, y: WALL_T,
     w: W - WALL_S * 2,
     h: H - WALL_T - BAR_H,
   };
 
+  /* Vertical zone stack */
   const zones = [
     { id: 0, name: "講授區", key: "1",
-      x: room.x + 4, y: room.y + 4, w: 156, h: 108,
+      x: room.x + 2, y: room.y + 2, w: room.w - 4, h: 118,
       info: "白板講解 · 今日課題：數據庫基礎（SELECT／WHERE）",
       color: C.zoneTint1 },
     { id: 1, name: "電腦區", key: "2",
-      x: room.x + 168, y: room.y + 12, w: 296, h: 210,
+      x: room.x + 2, y: room.y + 124, w: room.w - 4, h: 230,
       info: "SBA 進度：第 3 節 · 練習題 4／8 · 請儲存草稿",
       color: C.zoneTint2 },
     { id: 2, name: "討論區", key: "3",
-      x: room.x + 4, y: room.y + 118, w: 156, h: room.h - 122,
+      x: room.x + 2, y: room.y + 358, w: room.w - 4, h: 110,
       info: "小組協作 · 專題討論進行中 · 請小聲交流",
       color: C.zoneTint3 },
     { id: 3, name: "儲物區", key: "4",
-      x: room.x + 476, y: room.y + 12, w: room.w - 480, h: room.h - 20,
+      x: room.x + 2, y: room.y + 472, w: room.w - 4, h: room.h - 476,
       info: "教材／耳機／線材 · 借用請於教員室登記",
       color: C.zoneTint4 },
   ];
 
+  const FURN_SC = 1.55;   /* furniture larger on phone */
+  const CHAR_SCALE = 2.85; /* characters MUCH larger */
+
   const solids = [];
-  const teacherDesk = { x: room.x + 40, y: room.y + 58, w: 72, h: 30, kind: "teacherDesk" };
+  const teacherDesk = {
+    x: room.x + room.w / 2 - 48, y: room.y + 72,
+    w: 96, h: 38, kind: "teacherDesk"
+  };
   solids.push(teacherDesk);
 
+  /* 2 columns × 3 rows of large desks in 電腦區 */
   const deskPositions = [];
   for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 3; col++) {
-      const dx = room.x + 184 + col * 92;
-      const dy = room.y + 40 + row * 62;
-      const d = { x: dx, y: dy, w: 68, h: 28, kind: "desk", row, col };
+    for (let col = 0; col < 2; col++) {
+      const dx = room.x + 28 + col * 156;
+      const dy = room.y + 150 + row * 68;
+      const d = { x: dx, y: dy, w: 100, h: 36, kind: "desk", row, col };
       deskPositions.push(d);
       solids.push(d);
     }
   }
 
-  solids.push({ x: room.x + 22, y: room.y + 148, w: 44, h: 44, kind: "round" });
-  solids.push({ x: room.x + 92, y: room.y + 188, w: 44, h: 44, kind: "round" });
+  /* Discussion round tables */
+  solids.push({ x: room.x + 36, y: room.y + 380, w: 64, h: 64, kind: "round" });
+  solids.push({ x: room.x + 210, y: room.y + 390, w: 64, h: 64, kind: "round" });
 
-  solids.push({ x: room.x + 486, y: room.y + 24, w: 88, h: 22, kind: "shelf", tier: 0 });
-  solids.push({ x: room.x + 486, y: room.y + 58, w: 88, h: 22, kind: "shelf", tier: 1 });
-  solids.push({ x: room.x + 486, y: room.y + 92, w: 88, h: 22, kind: "shelf", tier: 2 });
-  solids.push({ x: room.x + 486, y: room.y + 126, w: 88, h: 22, kind: "shelf", tier: 3 });
+  /* Storage — horizontal shelves + cabinets */
+  solids.push({ x: room.x + 12, y: room.y + 486, w: 140, h: 28, kind: "shelf", tier: 0 });
+  solids.push({ x: room.x + 160, y: room.y + 486, w: 140, h: 28, kind: "shelf", tier: 1 });
+  solids.push({ x: room.x + 12, y: room.y + 522, w: 140, h: 28, kind: "shelf", tier: 2 });
+  solids.push({ x: room.x + 160, y: room.y + 522, w: 70, h: 48, kind: "cabinet" });
+  solids.push({ x: room.x + 240, y: room.y + 522, w: 70, h: 48, kind: "cabinet" });
 
-  solids.push({ x: room.x + 486, y: room.y + 168, w: 40, h: 42, kind: "cabinet" });
-  solids.push({ x: room.x + 534, y: room.y + 168, w: 40, h: 42, kind: "cabinet" });
+  solids.push({ x: room.x + 16, y: room.y + 10, w: room.w - 32, h: 10, kind: "board" });
 
-  solids.push({ x: room.x + 12, y: room.y + 8, w: 148, h: 8, kind: "board" });
+  solids.push({ x: room.x + 6, y: room.y + 100, w: 22, h: 26, kind: "plant", style: 0 });
+  solids.push({ x: room.x + room.w - 28, y: room.y + 100, w: 22, h: 26, kind: "plant", style: 1 });
+  solids.push({ x: room.x + 6, y: room.y + room.h - 36, w: 22, h: 26, kind: "plant", style: 2 });
+  solids.push({ x: room.x + room.w - 28, y: room.y + 360, w: 22, h: 26, kind: "plant", style: 3 });
 
-  solids.push({ x: room.x + 6, y: room.y + room.h - 30, w: 18, h: 22, kind: "plant", style: 0 });
-  solids.push({ x: room.x + room.w - 26, y: room.y + room.h - 30, w: 18, h: 22, kind: "plant", style: 1 });
-  solids.push({ x: room.x + room.w - 26, y: room.y + 8, w: 18, h: 22, kind: "plant", style: 2 });
-  solids.push({ x: room.x + 6, y: room.y + 100, w: 16, h: 18, kind: "plant", style: 3 });
+  solids.push({ x: 1, y: room.y + 300, w: WALL_S - 2, h: 70, kind: "door" });
 
-  solids.push({ x: 2, y: room.y + room.h - 70, w: WALL_S - 4, h: 56, kind: "door" });
-
-  const CHAR_SCALE = 1.75;
   const teacher = {
-    x: room.x + 70, y: room.y + 110, w: 14, h: 18, speed: 1.55, facing: 0, walkPhase: 0,
+    x: room.x + room.w / 2 - 10, y: room.y + 115,
+    w: 18, h: 24, speed: 1.85, facing: 0, walkPhase: 0,
   };
 
-  const studentColors = [0,1,2,3,4,5,0];
+  const studentColors = [0,1,2,3,4,5];
   const students = [];
-  const seatedIdx = [0, 1, 2, 3, 5, 6, 7];
-  for (let i = 0; i < seatedIdx.length; i++) {
-    const d = deskPositions[seatedIdx[i]];
+  for (let i = 0; i < deskPositions.length; i++) {
+    const d = deskPositions[i];
     students.push({
-      x: d.x + 26, y: d.y + 28, seated: true,
-      sprite: studentColors[i], bob: i * 0.9, facing: 3,
+      x: d.x + 38, y: d.y + 34, seated: true,
+      sprite: studentColors[i % studentColors.length], bob: i * 0.9, facing: 3,
     });
   }
   students.push({
-    x: room.x + 48, y: room.y + 220, seated: false,
+    x: room.x + 70, y: room.y + 420, seated: false,
     sprite: 5, bob: 0, walkPhase: 0, facing: 2,
     path: [
-      { x: room.x + 48, y: room.y + 220 },
-      { x: room.x + 130, y: room.y + 220 },
-      { x: room.x + 130, y: room.y + 160 },
-      { x: room.x + 48, y: room.y + 160 },
+      { x: room.x + 70, y: room.y + 420 },
+      { x: room.x + 250, y: room.y + 420 },
+      { x: room.x + 250, y: room.y + 380 },
+      { x: room.x + 70, y: room.y + 380 },
     ],
     pi: 0,
   });
 
   const cat = {
-    x: deskPositions[4].x + 36, y: deskPositions[4].y - 4,
-    homeX: deskPositions[4].x + 36, homeY: deskPositions[4].y - 4,
-    tx: deskPositions[4].x + 36, ty: deskPositions[4].y - 4,
+    x: deskPositions[1].x + 50, y: deskPositions[1].y - 6,
+    homeX: deskPositions[1].x + 50, homeY: deskPositions[1].y - 6,
+    tx: deskPositions[1].x + 50, ty: deskPositions[1].y - 6,
     asleep: true, blink: 0, walkPhase: 0, facing: 2, moving: false,
   };
 
-  const carpet = { x: room.x + 10, y: room.y + 130, w: 148, h: room.h - 140 };
+  const carpet = { x: room.x + 10, y: room.y + 368, w: room.w - 20, h: 96 };
   const posters = [
-    { x: room.x + 170, y: room.y + 6, kind: 0 },
-    { x: room.x + 460, y: room.y + 6, kind: 1 },
+    { x: room.x + 8, y: room.y + 48, kind: 0 },
+    { x: room.x + room.w - 44, y: room.y + 48, kind: 1 },
   ];
 
-  /* ── input ── */
   const keys = Object.create(null);
   const touchPad = { up: false, down: false, left: false, right: false };
   let isTouchUI = false;
@@ -328,12 +389,52 @@
   function detectTouchUI() {
     isTouchUI = ("ontouchstart" in window) ||
       (navigator.maxTouchPoints > 0) ||
-      window.matchMedia("(pointer: coarse)").matches;
+      window.matchMedia("(pointer: coarse)").matches ||
+      window.matchMedia("(max-width: 700px)").matches;
     const dpad = document.getElementById("dpad");
-    if (dpad) dpad.classList.toggle("show", isTouchUI && state === STATE.PLAY);
+    const actions = document.getElementById("actions");
+    const show = isTouchUI && state === STATE.PLAY;
+    if (dpad) dpad.classList.toggle("show", show);
+    if (actions) actions.classList.toggle("show", show);
   }
   detectTouchUI();
   window.addEventListener("resize", detectTouchUI);
+  window.addEventListener("orientationchange", detectTouchUI);
+
+  function beginPlay() {
+    state = STATE.PLAY;
+    detectTouchUI();
+  }
+
+  function openPanelForZone(z) {
+    /* Cards stacked in lower half for thumb reach */
+    const pw = Math.min(300, W - 24);
+    const ph = 130;
+    panel = {
+      title: z.name, info: z.info,
+      x: (W - pw) / 2,
+      y: H - BAR_H - ph - 100,
+      pw, ph,
+    };
+  }
+
+  function interactNearest() {
+    const cx = teacher.x + teacher.w / 2;
+    const cy = teacher.y + teacher.h / 2;
+    let best = null, bestD = 1e9;
+    for (const z of zones) {
+      const zx = z.x + z.w / 2, zy = z.y + z.h / 2;
+      const d = Math.hypot(cx - zx, cy - zy);
+      const inside = cx >= z.x && cx <= z.x + z.w && cy >= z.y && cy <= z.y + z.h;
+      const score = inside ? d * 0.3 : d;
+      if (score < bestD) { bestD = score; best = z; }
+    }
+    if (best && bestD < 160) {
+      highlightZone = best.id;
+      highlightTimer = 90;
+      openPanelForZone(best);
+    }
+  }
 
   window.addEventListener("keydown", (e) => {
     keys[e.code] = true;
@@ -343,6 +444,7 @@
     }
     if (state !== STATE.PLAY) return;
     if (e.code === "Escape") { panel = null; highlightZone = -1; return; }
+    if (e.code === "KeyE" || e.code === "KeyF") { interactNearest(); return; }
     const numMap = { Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3, Numpad1: 0, Numpad2: 1, Numpad3: 2, Numpad4: 3 };
     if (e.code in numMap) {
       const z = zones[numMap[e.code]];
@@ -352,11 +454,6 @@
     }
   });
   window.addEventListener("keyup", (e) => { keys[e.code] = false; });
-
-  function beginPlay() {
-    state = STATE.PLAY;
-    detectTouchUI();
-  }
 
   function canvasPoint(ev) {
     const r = canvas.getBoundingClientRect();
@@ -370,16 +467,6 @@
       cx = ev.clientX; cy = ev.clientY;
     }
     return { x: (cx - r.left) * sx, y: (cy - r.top) * sy };
-  }
-
-  function openPanelForZone(z) {
-    const pw = 240, ph = 96;
-    panel = {
-      title: z.name, info: z.info,
-      x: Math.min(Math.max(z.x + z.w / 2 - pw / 2, 8), W - pw - 8),
-      y: Math.min(Math.max(z.y + 10, 40), H - BAR_H - ph - 8),
-      pw, ph,
-    };
   }
 
   function hitZone(px, py) {
@@ -396,12 +483,12 @@
 
   function handlePointer(p) {
     if (state === STATE.TITLE) {
-      beginPlay();
+      if (hitRect(p, startBtn) || true) beginPlay();
       return;
     }
     if (panel) {
       if (hitRect(p, closeBtn)) { panel = null; highlightZone = -1; return; }
-      const pw = panel.pw || 240, ph = panel.ph || 96;
+      const pw = panel.pw || 300, ph = panel.ph || 130;
       const inside = p.x >= panel.x && p.x <= panel.x + pw && p.y >= panel.y && p.y <= panel.y + ph;
       if (!inside) { panel = null; highlightZone = -1; return; }
       return;
@@ -429,7 +516,6 @@
   (function setupDpad() {
     const dpad = document.getElementById("dpad");
     if (!dpad) return;
-    const map = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight" };
     function setDir(dir, on) {
       touchPad[dir] = on;
       const el = dpad.querySelector("[data-dir=" + dir + "]");
@@ -449,18 +535,41 @@
     dpad.querySelectorAll(".btn[data-dir]").forEach(bind);
   })();
 
+  /* Action buttons */
+  (function setupActions() {
+    const act = document.getElementById("btnAct");
+    const cls = document.getElementById("btnClose");
+    function press(el, fn) {
+      if (!el) return;
+      const go = (ev) => {
+        ev.preventDefault(); ev.stopPropagation();
+        el.classList.add("active");
+        fn();
+        setTimeout(() => el.classList.remove("active"), 120);
+      };
+      el.addEventListener("touchstart", go, { passive: false });
+      el.addEventListener("click", go);
+    }
+    press(act, () => {
+      if (state !== STATE.PLAY) return;
+      if (panel) { panel = null; highlightZone = -1; return; }
+      interactNearest();
+    });
+    press(cls, () => { panel = null; highlightZone = -1; });
+  })();
+
   function rectsOverlap(a, b) {
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   }
 
   function blocked(nx, ny) {
-    const box = { x: nx, y: ny + 8, w: teacher.w, h: teacher.h - 6 };
+    const box = { x: nx, y: ny + 10, w: teacher.w, h: teacher.h - 8 };
     if (box.x < room.x + 3 || box.y < room.y + 4 ||
         box.x + box.w > room.x + room.w - 3 ||
         box.y + box.h > room.y + room.h - 3) return true;
     for (const s of solids) {
       if (s.kind === "door") continue;
-      const hit = { x: s.x + 2, y: s.y + Math.max(0, s.h - 14), w: s.w - 4, h: Math.min(s.h, 16) };
+      const hit = { x: s.x + 2, y: s.y + Math.max(0, s.h - 16), w: s.w - 4, h: Math.min(s.h, 18) };
       if (rectsOverlap(box, hit)) return true;
     }
     return false;
@@ -511,10 +620,10 @@
         if (!cat.asleep && Math.random() < 0.45) {
           cat.moving = true;
           const spots = [
-            { x: deskPositions[4].x + 10, y: deskPositions[4].y - 4 },
-            { x: deskPositions[4].x + 50, y: deskPositions[4].y - 2 },
-            { x: room.x + 200, y: room.y + room.h - 40 },
-            { x: room.x + 340, y: room.y + room.h - 36 },
+            { x: deskPositions[1].x + 20, y: deskPositions[1].y - 4 },
+            { x: deskPositions[3].x + 40, y: deskPositions[3].y - 2 },
+            { x: room.x + 80, y: room.y + 440 },
+            { x: room.x + 240, y: room.y + 440 },
             { x: cat.homeX, y: cat.homeY },
           ];
           const pick = spots[(Math.random() * spots.length) | 0];
@@ -544,9 +653,16 @@
     ctx.fillRect((x + 0.5) | 0, (y + 0.5) | 0, (w + 0.5) | 0, (h + 0.5) | 0);
   }
 
-  /* ── scene layers ── */
+  function roundPanel(x, y, w, h, fill, border) {
+    fillRect(x + 3, y + 3, w, h, "rgba(0,0,0,0.4)");
+    fillRect(x, y, w, h, fill);
+    fillRect(x, y, w, 4, C.uiAccent);
+    fillRect(x, y, 3, h, border);
+    fillRect(x + w - 3, y, 3, h, border);
+    fillRect(x, y + h - 3, w, 3, border);
+  }
+
   function drawFloor() {
-    // staggered plank rows using 4 floor variants
     const tw = 32, th = 16;
     for (let ty = room.y; ty < room.y + room.h; ty += th) {
       const row = ((ty - room.y) / th) | 0;
@@ -567,88 +683,82 @@
         ctx.drawImage(atlas, s.x + srcOff, s.y, clipW, Math.min(th, s.h), clipX, ty, clipW, th);
       }
     }
+    /* warm wood grain wash */
+    ctx.fillStyle = "rgba(180,120,60,0.06)";
+    fillRect(room.x, room.y, room.w, room.h);
   }
 
   function drawCarpet() {
     const c = carpet;
-    fillRect(c.x + 2, c.y + 2, c.w, c.h, "rgba(30,18,8,0.25)");
+    fillRect(c.x + 3, c.y + 3, c.w, c.h, "rgba(30,18,8,0.3)");
     blitTiled("carpet", c.x, c.y, c.w, c.h);
-    // ornate border
-    fillRect(c.x, c.y, c.w, 3, "#c87858");
-    fillRect(c.x, c.y + c.h - 3, c.w, 3, "#c87858");
-    fillRect(c.x, c.y, 3, c.h, "#c87858");
-    fillRect(c.x + c.w - 3, c.y, 3, c.h, "#c87858");
-    fillRect(c.x + 4, c.y + 4, c.w - 8, 1, "rgba(154,90,72,0.7)");
-    fillRect(c.x + 4, c.y + c.h - 5, c.w - 8, 1, "rgba(154,90,72,0.7)");
+    fillRect(c.x, c.y, c.w, 4, "#c87858");
+    fillRect(c.x, c.y + c.h - 4, c.w, 4, "#c87858");
+    fillRect(c.x, c.y, 4, c.h, "#c87858");
+    fillRect(c.x + c.w - 4, c.y, 4, c.h, "#c87858");
+    fillRect(c.x + 6, c.y + 6, c.w - 12, 2, "rgba(154,90,72,0.75)");
+    fillRect(c.x + 6, c.y + c.h - 8, c.w - 12, 2, "rgba(154,90,72,0.75)");
   }
 
   function drawWalls() {
-    // top wall with atlas strip tiled
     blitTiled("wall", 0, 0, W, WALL_T);
-    // side walls
     fillRect(0, 0, WALL_S, H - BAR_H, C.wall);
     fillRect(W - WALL_S, 0, WALL_S, H - BAR_H, C.wallDark);
     for (let y = 4; y < WALL_T - 4; y += 6) fillRect(0, y, WALL_S, 1, "#e4d0b0");
-    for (let y = 4; y < H - BAR_H - 4; y += 8) {
+    for (let y = 4; y < H - BAR_H - 4; y += 10) {
       fillRect(2, y, 3, 2, "rgba(212,188,152,0.5)");
       fillRect(W - 8, y, 3, 2, "rgba(180,150,120,0.4)");
     }
-    // side trim
     fillRect(WALL_S - 3, WALL_T, 3, room.h, C.trim);
     fillRect(W - WALL_S, WALL_T, 3, room.h, C.trimD);
-    // baseboard
-    fillRect(0, room.y + room.h - 4, W, 4, C.baseboard);
-    fillRect(0, room.y + room.h - 3, W, 1, C.trimL);
+    fillRect(0, room.y + room.h - 5, W, 5, C.baseboard);
+    fillRect(0, room.y + room.h - 4, W, 1, C.trimL);
 
-    // windows (animated cloud via offset blit + overlay drift)
-    const wins = [room.x + 178, room.x + 272, room.x + 366];
+    /* Two large windows across top wall */
+    const wins = [room.x + 40, room.x + 150, room.x + 250];
     for (const wx of wins) {
-      blit("window", wx - 3, 1);
-      // soft animated cloud overlay
+      blitScaled("window", wx - 4, 2, 1.15);
       const drift = ((frame * 0.12) + wx) % 50;
-      ctx.fillStyle = "rgba(240,248,255,0.35)";
-      fillRect(wx + 6 + drift * 0.4, 8, 10, 3);
-      fillRect(wx + 10 + drift * 0.4, 6, 6, 2);
+      ctx.fillStyle = "rgba(240,248,255,0.4)";
+      fillRect(wx + 8 + drift * 0.35, 10, 12, 3);
+      fillRect(wx + 14 + drift * 0.35, 8, 7, 2);
     }
-    blit("door", 2, room.y + room.h - 68);
+    blitScaled("door", 0, room.y + 295, 1.15);
   }
 
   function drawWhiteboard() {
-    blit("board", room.x + 10, room.y + 6);
-    // live chalk text overlay (readable)
-    const bx = room.x + 18, by = room.y + 16;
+    blitStretch("board", room.x + 40, room.y + 8, room.w - 80, 58);
+    const bx = room.x + 52, by = room.y + 22;
     ctx.textAlign = "left";
     ctx.fillStyle = C.chalk;
-    ctx.font = "bold 8px monospace";
+    ctx.font = "bold 11px monospace";
     ctx.fillText("ICT · 數據庫", bx, by);
     ctx.fillStyle = C.chalkY;
-    ctx.font = "7px monospace";
-    ctx.fillText("SELECT name FROM students", bx - 2, by + 12);
+    ctx.font = "10px monospace";
+    ctx.fillText("SELECT name FROM students", bx - 2, by + 16);
     ctx.fillStyle = C.chalkDim;
-    ctx.fillText("WHERE class = '4A';", bx + 6, by + 22);
+    ctx.fillText("WHERE class = '4A';", bx + 8, by + 30);
   }
 
   function drawPosters() {
-    for (const p of posters) blit("poster" + p.kind, p.x, p.y);
+    for (const p of posters) blitScaled("poster" + p.kind, p.x, p.y, 1.3);
   }
 
   function drawDeskUnit(d, isTeacher) {
-    // chair behind desk
-    blit("chair", d.x + d.w / 2 - 8, d.y + d.h - 2);
+    blitScaled("chair", d.x + d.w / 2 - 12, d.y + d.h - 4, FURN_SC * 0.95);
     if (isTeacher) {
-      blit("teacherDesk", d.x - 2, d.y - 4);
-      blit("monitor", d.x + d.w / 2 - 18, d.y - 26);
+      blitScaled("teacherDesk", d.x - 4, d.y - 6, FURN_SC * 0.95);
+      blitScaled("monitor", d.x + d.w / 2 - 26, d.y - 36, FURN_SC);
     } else {
-      blit("desk", d.x - 2, d.y - 2);
-      // subtle screen flicker via alternate brightness overlay
-      blit("monitor", d.x + d.w / 2 - 18, d.y - 24);
+      blitScaled("desk", d.x - 4, d.y - 4, FURN_SC * 0.95);
+      blitScaled("monitor", d.x + d.w / 2 - 26, d.y - 34, FURN_SC);
       const glow = (Math.sin(frame * 0.05 + d.x * 0.08) + 1) * 0.5;
-      if (glow > 0.6) {
-        ctx.fillStyle = "rgba(136,208,240,0.12)";
-        fillRect(d.x + d.w / 2 - 14, d.y - 21, 26, 16);
+      if (glow > 0.55) {
+        ctx.fillStyle = "rgba(136,208,240,0.14)";
+        fillRect(d.x + d.w / 2 - 20, d.y - 28, 36, 20);
       }
-      blit("keyboard", d.x + 14, d.y + 2);
-      blit("mouse", d.x + d.w - 18, d.y + 3);
+      blitScaled("keyboard", d.x + 18, d.y + 4, FURN_SC * 0.9);
+      blitScaled("mouse", d.x + d.w - 28, d.y + 6, FURN_SC);
     }
   }
 
@@ -658,12 +768,25 @@
     for (const s of solids) {
       if (s.kind === "teacherDesk") drawDeskUnit(s, true);
       else if (s.kind === "desk") drawDeskUnit(s, false);
-      else if (s.kind === "round") blit("round", s.x - 2, s.y - 2);
-      else if (s.kind === "shelf") blit("shelf" + (s.tier || 0), s.x - 2, s.y - 1);
-      else if (s.kind === "cabinet") blit("cabinet", s.x, s.y);
+      else if (s.kind === "round") blitScaled("round", s.x - 4, s.y - 4, FURN_SC * 1.05);
+      else if (s.kind === "shelf") blitScaled("shelf" + (s.tier || 0), s.x - 2, s.y - 2, FURN_SC * 0.85);
+      else if (s.kind === "cabinet") blitScaled("cabinet", s.x, s.y - 4, FURN_SC);
       else if (s.kind === "plant") {
-        const sway = Math.sin(frame * 0.03 + (s.style || 0)) * 1;
-        blit("plant" + (s.style || 0), s.x - 1 + sway, s.y - 6);
+        const sway = Math.sin(frame * 0.03 + (s.style || 0)) * 1.2;
+        blitScaled("plant" + (s.style || 0), s.x - 2 + sway, s.y - 10, FURN_SC * 1.15);
+      }
+    }
+  }
+
+  function drawZoneTints() {
+    for (const z of zones) {
+      const active = highlightZone === z.id || hoverZone === z;
+      fillRect(z.x, z.y, z.w, z.h, active ? C.highlight : z.color);
+      if (active) {
+        fillRect(z.x, z.y, z.w, 3, "rgba(240,193,75,0.6)");
+        fillRect(z.x, z.y + z.h - 3, z.w, 3, "rgba(240,193,75,0.6)");
+        fillRect(z.x, z.y, 3, z.h, "rgba(240,193,75,0.6)");
+        fillRect(z.x + z.w - 3, z.y, 3, z.h, "rgba(240,193,75,0.6)");
       }
     }
   }
@@ -671,22 +794,14 @@
   function drawZoneLabels() {
     ctx.textAlign = "left";
     for (const z of zones) {
-      const active = highlightZone === z.id || hoverZone === z;
-      fillRect(z.x, z.y, z.w, z.h, active ? C.highlight : z.color);
-      if (active) {
-        fillRect(z.x, z.y, z.w, 2, "rgba(240,193,75,0.55)");
-        fillRect(z.x, z.y + z.h - 2, z.w, 2, "rgba(240,193,75,0.55)");
-        fillRect(z.x, z.y, 2, z.h, "rgba(240,193,75,0.55)");
-        fillRect(z.x + z.w - 2, z.y, 2, z.h, "rgba(240,193,75,0.55)");
-      }
       const label = z.key + " · " + z.name;
-      ctx.font = "bold 13px monospace";
+      ctx.font = "bold 14px monospace";
       const tw = ctx.measureText(label).width;
-      fillRect(z.x + 4, z.y + 4, tw + 14, 18, "rgba(255,248,238,0.92)");
-      fillRect(z.x + 4, z.y + 4, 4, 18, C.uiAccent);
-      fillRect(z.x + 4, z.y + 21, tw + 14, 2, "rgba(196,154,108,0.6)");
+      fillRect(z.x + 6, z.y + 6, tw + 16, 22, "rgba(255,248,238,0.94)");
+      fillRect(z.x + 6, z.y + 6, 5, 22, C.uiAccent);
+      fillRect(z.x + 6, z.y + 26, tw + 16, 2, "rgba(196,154,108,0.65)");
       ctx.fillStyle = C.zoneLabel;
-      ctx.fillText(label, z.x + 12, z.y + 17);
+      ctx.fillText(label, z.x + 16, z.y + 22);
     }
   }
 
@@ -698,39 +813,37 @@
   function drawTeacherSprite() {
     const f = walkFrame(teacher.walkPhase);
     const name = "teacher_" + teacher.facing + "_" + f;
-    const sc = CHAR_SCALE;
-    blitScaled(name, teacher.x - 2, teacher.y - 6, sc);
+    blitScaled(name, teacher.x - 4, teacher.y - 10, CHAR_SCALE);
   }
 
   function drawStudentSprite(s) {
-    const sc = CHAR_SCALE * 0.95;
+    const sc = CHAR_SCALE * 0.92;
     if (s.seated) {
-      const bob = Math.sin(s.bob) * 0.6;
-      blitScaled("student_sit_" + s.sprite, s.x - 2, s.y + bob - 4, sc);
+      const bob = Math.sin(s.bob) * 0.8;
+      blitScaled("student_sit_" + s.sprite, s.x - 4, s.y + bob - 8, sc);
     } else {
       const f = walkFrame(s.walkPhase || 0);
-      blitScaled("student_walk_" + s.facing + "_" + f, s.x - 2, s.y - 6, sc);
+      blitScaled("student_walk_" + s.facing + "_" + f, s.x - 4, s.y - 10, sc);
     }
   }
 
   function drawCatSprite() {
-    const cx = cat.x, cy = cat.y;
-    const sc = CHAR_SCALE * 1.05;
+    const sc = CHAR_SCALE * 1.1;
     if (cat.moving) {
       const f = ((cat.walkPhase * 1.2) | 0) % 4;
       const dir = cat.facing === 1 ? 1 : 2;
-      blitScaled("cat_walk_" + dir + "_" + f, cx - 2, cy - 4 - Math.abs(Math.sin(cat.walkPhase)), sc);
+      blitScaled("cat_walk_" + dir + "_" + f, cat.x - 4, cat.y - 6 - Math.abs(Math.sin(cat.walkPhase)), sc);
     } else if (cat.asleep) {
-      blitScaled("cat_sleep", cx - 2, cy - 2, sc);
+      blitScaled("cat_sleep", cat.x - 4, cat.y - 4, sc);
       if (frame % 50 < 25) {
         ctx.fillStyle = C.uiDim;
-        ctx.font = "10px monospace";
+        ctx.font = "12px monospace";
         ctx.textAlign = "left";
-        ctx.fillText("z", cx + 28, cy);
-        if (frame % 50 < 12) ctx.fillText("z", cx + 34, cy - 6);
+        ctx.fillText("z", cat.x + 34, cat.y);
+        if (frame % 50 < 12) ctx.fillText("z", cat.x + 42, cat.y - 8);
       }
     } else {
-      blitScaled("cat_loaf", cx - 2, cy - 2, sc);
+      blitScaled("cat_loaf", cat.x - 4, cat.y - 4, sc);
     }
   }
 
@@ -738,43 +851,51 @@
     const ents = [];
     for (const s of students) {
       ents.push({
-        y: s.seated ? s.y + 10 : s.y + 14,
+        y: s.seated ? s.y + 14 : s.y + 18,
         draw: () => drawStudentSprite(s),
       });
     }
-    ents.push({ y: cat.y + 12, draw: drawCatSprite });
+    ents.push({ y: cat.y + 14, draw: drawCatSprite });
     ents.push({ y: teacher.y + teacher.h, draw: drawTeacherSprite });
     ents.sort((a, b) => a.y - b.y);
     for (const e of ents) e.draw();
   }
 
   function drawLighting() {
-    const windows = [room.x + 178, room.x + 272, room.x + 366];
+    const windows = [room.x + 40, room.x + 150, room.x + 250];
     for (const wx of windows) {
-      // warm shaft using atlas glow stretched
-      blitStretch("warmGlow", wx - 10, WALL_T - 4, 90, 120);
-      for (let i = 0; i < 6; i++) {
-        ctx.fillStyle = "rgba(255,210,120," + (0.035 - i * 0.004) + ")";
-        fillRect(wx + 6 - i * 2, WALL_T + i * 10, 66 + i * 4, 12);
+      blitStretch("warmGlow", wx - 16, WALL_T - 6, 110, 160);
+      for (let i = 0; i < 8; i++) {
+        ctx.fillStyle = "rgba(255,210,120," + (0.04 - i * 0.004) + ")";
+        fillRect(wx + 4 - i * 2, WALL_T + i * 12, 78 + i * 5, 14);
       }
     }
-    // corner vignettes
-    blitStretch("vignetteCorner", 0, 0, 80, 80);
+    /* soft overhead lamp glows over computer zone */
+    blitStretch("warmGlow", room.x + 40, room.y + 140, 120, 100);
+    blitStretch("warmGlow", room.x + 200, room.y + 140, 120, 100);
+    blitStretch("warmGlow", room.x + 80, room.y + 380, 160, 90);
+
+    blitStretch("vignetteCorner", 0, 0, 90, 90);
     ctx.save();
     ctx.translate(W, 0); ctx.scale(-1, 1);
-    blitStretch("vignetteCorner", 0, 0, 80, 80);
+    blitStretch("vignetteCorner", 0, 0, 90, 90);
     ctx.restore();
     ctx.save();
     ctx.translate(0, H - BAR_H); ctx.scale(1, -1);
-    blitStretch("vignetteCorner", 0, 0, 80, 70);
+    blitStretch("vignetteCorner", 0, 0, 90, 80);
     ctx.restore();
     ctx.save();
     ctx.translate(W, H - BAR_H); ctx.scale(-1, -1);
-    blitStretch("vignetteCorner", 0, 0, 80, 70);
+    blitStretch("vignetteCorner", 0, 0, 90, 80);
     ctx.restore();
-    // warm wash
-    ctx.fillStyle = "rgba(255,220,150,0.08)";
+
+    ctx.fillStyle = "rgba(255,220,150,0.09)";
     fillRect(room.x, room.y, room.w, room.h);
+    /* subtle scanline warmth */
+    if (frame % 2 === 0) {
+      ctx.fillStyle = "rgba(255,240,200,0.015)";
+      for (let y = room.y; y < room.y + room.h; y += 4) fillRect(room.x, y, room.w, 1);
+    }
   }
 
   function drawUIBar() {
@@ -783,131 +904,122 @@
     fillRect(0, barY, W, 3, C.uiPanelBorder);
     fillRect(0, barY + 3, W, 2, C.uiAccent);
     fillRect(0, barY + 5, W, BAR_H - 5, C.uiPanelMid);
-    fillRect(0, barY + 5, W, 1, "rgba(255,248,238,0.06)");
+    fillRect(0, barY + 5, W, 1, "rgba(255,248,238,0.07)");
 
-    fillRect(8, barY + 12, 168, 28, C.uiChip);
-    fillRect(8, barY + 12, 4, 28, C.uiAccent);
-    fillRect(8, barY + 12, 168, 2, "rgba(240,193,75,0.35)");
+    /* stacked chips for portrait */
+    fillRect(8, barY + 10, W - 16, 22, C.uiChip);
+    fillRect(8, barY + 10, 4, 22, C.uiAccent);
     ctx.fillStyle = C.ui;
-    ctx.font = "bold 13px monospace";
-    ctx.textAlign = "left";
-    ctx.fillText("第 3 節 · 中四 ICT", 18, barY + 31);
-
-    ctx.fillStyle = C.uiDim;
-    ctx.font = "11px monospace";
-    ctx.fillText("Tsao Lap Cheung · 電腦室", 186, barY + 31);
-
-    const chipX = W - 210;
-    fillRect(chipX, barY + 12, 198, 28, C.uiChipAlt);
-    fillRect(chipX, barY + 12, 4, 28, "#68a858");
-    fillRect(chipX, barY + 12, 198, 2, "rgba(104,168,88,0.4)");
-    ctx.fillStyle = C.uiAccent;
     ctx.font = "bold 12px monospace";
-    ctx.fillText("進行中", chipX + 12, barY + 31);
+    ctx.textAlign = "left";
+    ctx.fillText("第 3 節 · 中四 ICT", 18, barY + 25);
+
+    fillRect(8, barY + 36, W - 16, 22, C.uiChipAlt);
+    fillRect(8, barY + 36, 4, 22, "#68a858");
+    ctx.fillStyle = C.uiAccent;
+    ctx.font = "bold 11px monospace";
+    ctx.fillText("進行中", 18, barY + 51);
     ctx.fillStyle = C.ui;
-    ctx.fillText("SBA 草稿檢查", chipX + 64, barY + 31);
+    ctx.fillText("SBA 草稿檢查 · Tsao", 70, barY + 51);
   }
 
   function drawPanel() {
     if (!panel) return;
     const { x, y, title, info } = panel;
-    const pw = panel.pw || 240, ph = panel.ph || 96;
-    fillRect(x + 4, y + 4, pw, ph, "rgba(0,0,0,0.45)");
-    fillRect(x, y, pw, ph, C.uiPanel);
-    fillRect(x + 3, y + 3, pw - 6, ph - 6, C.uiPanelMid);
-    fillRect(x, y, pw, 4, C.uiAccent);
-    fillRect(x, y, 3, ph, C.uiPanelBorder);
-    fillRect(x + pw - 3, y, 3, ph, C.uiPanelBorder);
-    fillRect(x, y + ph - 3, pw, 3, C.uiPanelBorder);
+    const pw = panel.pw || 300, ph = panel.ph || 130;
+    roundPanel(x, y, pw, ph, C.uiPanel, C.uiPanelBorder);
+    fillRect(x + 4, y + 6, pw - 8, ph - 10, C.uiPanelMid);
 
-    // close button (big tap target)
-    closeBtn = { x: x + pw - 36, y: y + 8, w: 28, h: 28 };
+    closeBtn = { x: x + pw - 40, y: y + 10, w: 32, h: 32 };
     fillRect(closeBtn.x, closeBtn.y, closeBtn.w, closeBtn.h, "#5a3020");
-    fillRect(closeBtn.x, closeBtn.y, closeBtn.w, 2, C.uiAccent);
+    fillRect(closeBtn.x, closeBtn.y, closeBtn.w, 3, C.uiAccent);
     ctx.fillStyle = C.titleCream;
-    ctx.font = "bold 16px monospace";
+    ctx.font = "bold 18px monospace";
     ctx.textAlign = "center";
-    ctx.fillText("✕", closeBtn.x + closeBtn.w / 2, closeBtn.y + 20);
+    ctx.fillText("✕", closeBtn.x + closeBtn.w / 2, closeBtn.y + 23);
 
     ctx.fillStyle = C.titleGold;
-    ctx.font = "bold 15px monospace";
+    ctx.font = "bold 17px monospace";
     ctx.textAlign = "left";
-    ctx.fillText("▸ " + title, x + 12, y + 28);
+    ctx.fillText("▸ " + title, x + 14, y + 34);
 
     ctx.fillStyle = C.ui;
-    ctx.font = "12px monospace";
-    const maxW = pw - 24;
-    let line = "", ly = y + 48;
+    ctx.font = "13px monospace";
+    const maxW = pw - 28;
+    let line = "", ly = y + 58;
     for (const ch of info) {
       const test = line + ch;
       if (ctx.measureText(test).width > maxW) {
-        ctx.fillText(line, x + 12, ly);
-        line = ch; ly += 15;
-        if (ly > y + ph - 22) break;
+        ctx.fillText(line, x + 14, ly);
+        line = ch; ly += 17;
+        if (ly > y + ph - 28) break;
       } else line = test;
     }
-    if (line && ly <= y + ph - 22) ctx.fillText(line, x + 12, ly);
+    if (line && ly <= y + ph - 28) ctx.fillText(line, x + 14, ly);
 
     ctx.fillStyle = C.uiDim;
-    ctx.font = "10px monospace";
-    ctx.textAlign = "left";
-    ctx.fillText("點外面／✕ 關閉", x + 12, y + ph - 10);
+    ctx.font = "11px monospace";
+    ctx.fillText("點外面／✕／關閉鍵", x + 14, y + ph - 12);
   }
 
   function drawTitle() {
     fillRect(0, 0, W, H, C.overlay);
-    const tw = 420, th = 210;
-    const tx = (W - tw) / 2, ty = (H - th) / 2 - 6;
-    fillRect(tx + 5, ty + 5, tw, th, "rgba(0,0,0,0.5)");
-    fillRect(tx, ty, tw, th, C.uiPanel);
-    fillRect(tx + 4, ty + 4, tw - 8, th - 8, C.uiPanelMid);
-    fillRect(tx, ty, tw, 5, C.uiAccent);
-    fillRect(tx, ty, 4, th, C.uiPanelBorder);
-    fillRect(tx + tw - 4, ty, 4, th, C.uiPanelBorder);
-    fillRect(tx, ty + th - 4, tw, 4, C.uiPanelBorder);
+    /* ambient room peek */
+    if (atlasReady) {
+      blitScaled("warmGlow", W / 2 - 80, H / 2 - 120, 2.5);
+    }
+    const tw = Math.min(320, W - 28);
+    const th = 280;
+    const tx = (W - tw) / 2, ty = (H - th) / 2 - 20;
+    roundPanel(tx, ty, tw, th, C.uiPanel, C.uiPanelBorder);
+    fillRect(tx + 5, ty + 8, tw - 10, th - 14, C.uiPanelMid);
 
-    blitScaled("monitor", tx + 18, ty + 22, 1.4);
-    blitScaled("plant0", tx + tw - 52, ty + 22, 1.5);
-    blitScaled("cat_loaf", tx + 22, ty + th - 52, 1.6);
-    blitScaled("poster0", tx + tw - 58, ty + th - 62, 1.3);
+    blitScaled("monitor", tx + 16, ty + 24, 1.6);
+    blitScaled("plant0", tx + tw - 56, ty + 22, 1.7);
+    blitScaled("cat_loaf", tx + 18, ty + th - 70, 2.0);
+    blitScaled("poster0", tx + tw - 62, ty + th - 80, 1.5);
 
     ctx.textAlign = "center";
     ctx.fillStyle = C.titleGold;
-    ctx.font = "bold 40px monospace";
-    ctx.fillText("像素課室", W / 2, ty + 58);
-    fillRect(W / 2 - 72, ty + 66, 144, 3, C.uiAccent);
+    ctx.font = "bold 42px monospace";
+    ctx.fillText("像素課室", W / 2, ty + 78);
+    fillRect(W / 2 - 70, ty + 88, 140, 3, C.uiAccent);
 
     ctx.fillStyle = C.titleCream;
-    ctx.font = "16px monospace";
-    ctx.fillText("上課，像玩遊戲一樣", W / 2, ty + 94);
+    ctx.font = "15px monospace";
+    ctx.fillText("上課，像玩遊戲一樣", W / 2, ty + 118);
 
     ctx.fillStyle = C.uiDim;
-    ctx.font = "12px monospace";
-    ctx.fillText("香港中學 ICT 電腦室 · Teacher Lap Cheung Tsao", W / 2, ty + 118);
+    ctx.font = "11px monospace";
+    ctx.fillText("香港中學 ICT 電腦室", W / 2, ty + 142);
+    ctx.fillText("Teacher Lap Cheung Tsao", W / 2, ty + 158);
 
-    // Big Start button
-    startBtn = { x: W / 2 - 110, y: ty + 138, w: 220, h: 44 };
-    const blink = Math.floor(frame / 28) % 2 === 0;
-    fillRect(startBtn.x + 3, startBtn.y + 3, startBtn.w, startBtn.h, "rgba(0,0,0,0.4)");
-    fillRect(startBtn.x, startBtn.y, startBtn.w, startBtn.h, blink ? "#6b4423" : "#5a3820");
-    fillRect(startBtn.x, startBtn.y, startBtn.w, 3, C.uiAccent);
+    startBtn = { x: W / 2 - 120, y: ty + 180, w: 240, h: 56 };
+    const blink = Math.floor(frame / 26) % 2 === 0;
+    fillRect(startBtn.x + 4, startBtn.y + 4, startBtn.w, startBtn.h, "rgba(0,0,0,0.45)");
+    fillRect(startBtn.x, startBtn.y, startBtn.w, startBtn.h, blink ? "#7a4e28" : "#5a3820");
+    fillRect(startBtn.x, startBtn.y, startBtn.w, 4, C.uiAccent);
     fillRect(startBtn.x, startBtn.y, 3, startBtn.h, C.uiPanelBorder);
     fillRect(startBtn.x + startBtn.w - 3, startBtn.y, 3, startBtn.h, C.uiPanelBorder);
     fillRect(startBtn.x, startBtn.y + startBtn.h - 3, startBtn.w, 3, C.uiPanelBorder);
     ctx.fillStyle = blink ? C.uiAccent : C.titleCream;
-    ctx.font = "bold 18px monospace";
-    ctx.fillText("▶  開始上課", W / 2, startBtn.y + 29);
+    ctx.font = "bold 20px monospace";
+    ctx.fillText("▶  開始上課", W / 2, startBtn.y + 36);
+
+    ctx.fillStyle = "rgba(255,248,238,0.45)";
+    ctx.font = "11px monospace";
+    ctx.fillText("觸控 · 或按 Space／Enter", W / 2, ty + th - 18);
   }
 
   function drawHint() {
     if (state !== STATE.PLAY || panel) return;
     ctx.textAlign = "left";
-    ctx.fillStyle = "rgba(255,248,238,0.55)";
+    ctx.fillStyle = "rgba(255,248,238,0.5)";
     ctx.font = "11px monospace";
     const hint = isTouchUI
-      ? "虛擬方向鍵移動 · 點擊區域開啟 · 點外面／✕ 關閉"
-      : "WASD／方向鍵 · 點擊區域 · 1–4 高亮 · Esc 關閉";
-    ctx.fillText(hint, room.x + 6, room.y + room.h - 10);
+      ? "方向鍵移動 · 點區域／互動鍵"
+      : "WASD · 點區域 · 1–4 · E 互動 · Esc";
+    ctx.fillText(hint, room.x + 8, room.y + room.h - 12);
   }
 
   function update() {
@@ -929,10 +1041,11 @@
     drawWalls();
     drawFloor();
     drawCarpet();
-    drawZoneLabels();
+    drawZoneTints();
     drawFurniture();
     drawEntities();
     drawLighting();
+    drawZoneLabels();
     drawUIBar();
     drawHint();
     drawPanel();
@@ -945,7 +1058,6 @@
     requestAnimationFrame(loop);
   }
 
-  // start immediately; atlas loads async but is tiny/data-uri so near-instant
   loop();
 })();
 </script>
