@@ -2,13 +2,16 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#8b5e3c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <title>像素課室 · 中四 ICT · Lap Cheung Tsao</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
     width: 100%; height: 100%;
+    height: 100dvh;
     background: #1a1008;
     display: flex;
     align-items: center;
@@ -16,30 +19,103 @@
     overflow: hidden;
     font-family: "Courier New", "PingFang HK", "Noto Sans TC", "Microsoft JhengHei", monospace;
     touch-action: none;
+    overscroll-behavior: none;
+  }
+  #wrap {
+    position: relative;
+    width: min(100vw, calc(100dvh * 16 / 9));
+    height: min(100dvh, calc(100vw * 9 / 16));
+    max-width: 100vw;
+    max-height: 100dvh;
   }
   canvas {
     display: block;
-    width: 1280px;
-    height: 720px;
-    max-width: 96vw;
-    max-height: 92vh;
+    width: 100%;
+    height: 100%;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
+    image-rendering: -moz-crisp-edges;
     background: #120c08;
-    border: 6px solid #5c3a22;
+    border: 4px solid #5c3a22;
     box-shadow:
       0 0 0 2px #c49a6c,
       0 0 40px rgba(0,0,0,0.65),
       inset 0 0 0 1px #2a1810;
     cursor: crosshair;
   }
-  @media (max-width: 1300px) {
-    canvas { width: 100%; height: auto; aspect-ratio: 16 / 9; }
+  /* On-screen D-pad */
+  #dpad {
+    display: none;
+    position: absolute;
+    left: max(8px, env(safe-area-inset-left));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    width: 148px;
+    height: 148px;
+    z-index: 5;
+    user-select: none;
+    touch-action: none;
+  }
+  #dpad.show { display: block; }
+  #dpad .btn {
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    background: rgba(46,30,18,0.82);
+    border: 3px solid #c49a6c;
+    box-shadow: inset 0 0 0 1px #f0c14b55;
+    color: #fff8ee;
+    font-size: 22px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  #dpad .btn.active { background: rgba(240,193,75,0.55); border-color: #f0c14b; }
+  #dpad .up { left: 50px; top: 0; }
+  #dpad .down { left: 50px; bottom: 0; }
+  #dpad .left { left: 0; top: 50px; }
+  #dpad .right { right: 0; top: 50px; }
+  #dpad .center {
+    left: 50px; top: 50px; width: 48px; height: 48px;
+    border-radius: 50%; opacity: 0.35; pointer-events: none;
+    font-size: 11px;
+  }
+  @media (min-width: 900px) and (hover: hover) {
+    #wrap {
+      width: min(1280px, 96vw);
+      height: min(720px, 92vh);
+      aspect-ratio: 16 / 9;
+    }
+    canvas { border-width: 6px; }
+  }
+  @media (orientation: portrait) and (max-width: 900px) {
+    #wrap {
+      width: 100vw;
+      height: auto;
+      aspect-ratio: 16 / 9;
+      max-height: 78dvh;
+    }
+    #dpad { width: 168px; height: 168px; }
+    #dpad .btn { width: 54px; height: 54px; font-size: 26px; }
+    #dpad .up, #dpad .down { left: 57px; }
+    #dpad .left, #dpad .right { top: 57px; }
+    #dpad .center { left: 57px; top: 57px; width: 54px; height: 54px; }
   }
 </style>
 </head>
 <body>
+<div id="wrap">
 <canvas id="game" width="640" height="360"></canvas>
+<div id="dpad" aria-hidden="true">
+  <div class="btn up" data-dir="up">▲</div>
+  <div class="btn left" data-dir="left">◀</div>
+  <div class="btn center">+</div>
+  <div class="btn right" data-dir="right">▶</div>
+  <div class="btn down" data-dir="down">▼</div>
+</div>
+</div>
 <script>
 (function () {
   "use strict";
@@ -70,6 +146,22 @@
       ctx.restore();
     } else {
       ctx.drawImage(atlas, s.x, s.y, s.w, s.h, x, y, s.w, s.h);
+    }
+  }
+
+  function blitScaled(name, dx, dy, scale, flipX) {
+    const s = SPR[name];
+    if (!s || !atlasReady) return;
+    const dw = (s.w * scale + 0.5) | 0, dh = (s.h * scale + 0.5) | 0;
+    const x = (dx + 0.5) | 0, y = (dy + 0.5) | 0;
+    if (flipX) {
+      ctx.save();
+      ctx.translate(x + dw, y);
+      ctx.scale(-1, 1);
+      ctx.drawImage(atlas, s.x, s.y, s.w, s.h, 0, 0, dw, dh);
+      ctx.restore();
+    } else {
+      ctx.drawImage(atlas, s.x, s.y, s.w, s.h, x, y, dw, dh);
     }
   }
 
@@ -125,7 +217,7 @@
 
   const WALL_T = 28;
   const WALL_S = 20;
-  const BAR_H = 36;
+  const BAR_H = 52;
   const room = {
     x: WALL_S, y: WALL_T,
     w: W - WALL_S * 2,
@@ -186,8 +278,9 @@
 
   solids.push({ x: 2, y: room.y + room.h - 70, w: WALL_S - 4, h: 56, kind: "door" });
 
+  const CHAR_SCALE = 1.75;
   const teacher = {
-    x: room.x + 70, y: room.y + 110, w: 12, h: 16, speed: 1.4, facing: 0, walkPhase: 0,
+    x: room.x + 70, y: room.y + 110, w: 14, h: 18, speed: 1.55, facing: 0, walkPhase: 0,
   };
 
   const studentColors = [0,1,2,3,4,5,0];
@@ -227,11 +320,26 @@
 
   /* ── input ── */
   const keys = Object.create(null);
+  const touchPad = { up: false, down: false, left: false, right: false };
+  let isTouchUI = false;
+  let startBtn = { x: 0, y: 0, w: 0, h: 0 };
+  let closeBtn = { x: 0, y: 0, w: 0, h: 0 };
+
+  function detectTouchUI() {
+    isTouchUI = ("ontouchstart" in window) ||
+      (navigator.maxTouchPoints > 0) ||
+      window.matchMedia("(pointer: coarse)").matches;
+    const dpad = document.getElementById("dpad");
+    if (dpad) dpad.classList.toggle("show", isTouchUI && state === STATE.PLAY);
+  }
+  detectTouchUI();
+  window.addEventListener("resize", detectTouchUI);
+
   window.addEventListener("keydown", (e) => {
     keys[e.code] = true;
     if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
     if (state === STATE.TITLE && (e.code === "Space" || e.code === "Enter")) {
-      state = STATE.PLAY; return;
+      beginPlay(); return;
     }
     if (state !== STATE.PLAY) return;
     if (e.code === "Escape") { panel = null; highlightZone = -1; return; }
@@ -245,19 +353,32 @@
   });
   window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
+  function beginPlay() {
+    state = STATE.PLAY;
+    detectTouchUI();
+  }
+
   function canvasPoint(ev) {
     const r = canvas.getBoundingClientRect();
     const sx = W / r.width, sy = H / r.height;
-    const cx = (ev.clientX !== undefined ? ev.clientX : ev.touches[0].clientX);
-    const cy = (ev.clientY !== undefined ? ev.clientY : ev.touches[0].clientY);
+    let cx, cy;
+    if (ev.touches && ev.touches.length) {
+      cx = ev.touches[0].clientX; cy = ev.touches[0].clientY;
+    } else if (ev.changedTouches && ev.changedTouches.length) {
+      cx = ev.changedTouches[0].clientX; cy = ev.changedTouches[0].clientY;
+    } else {
+      cx = ev.clientX; cy = ev.clientY;
+    }
     return { x: (cx - r.left) * sx, y: (cy - r.top) * sy };
   }
 
   function openPanelForZone(z) {
+    const pw = 240, ph = 96;
     panel = {
       title: z.name, info: z.info,
-      x: Math.min(Math.max(z.x + z.w / 2 - 90, 10), W - 190),
-      y: Math.min(Math.max(z.y + 12, 44), H - BAR_H - 80),
+      x: Math.min(Math.max(z.x + z.w / 2 - pw / 2, 8), W - pw - 8),
+      y: Math.min(Math.max(z.y + 10, 40), H - BAR_H - ph - 8),
+      pw, ph,
     };
   }
 
@@ -269,20 +390,64 @@
     return null;
   }
 
-  canvas.addEventListener("click", (e) => {
-    const p = canvasPoint(e);
-    if (state === STATE.TITLE) { state = STATE.PLAY; return; }
+  function hitRect(p, r) {
+    return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+  }
+
+  function handlePointer(p) {
+    if (state === STATE.TITLE) {
+      beginPlay();
+      return;
+    }
+    if (panel) {
+      if (hitRect(p, closeBtn)) { panel = null; highlightZone = -1; return; }
+      const pw = panel.pw || 240, ph = panel.ph || 96;
+      const inside = p.x >= panel.x && p.x <= panel.x + pw && p.y >= panel.y && p.y <= panel.y + ph;
+      if (!inside) { panel = null; highlightZone = -1; return; }
+      return;
+    }
     const z = hitZone(p.x, p.y);
     if (z) {
       highlightZone = z.id; highlightTimer = 70; openPanelForZone(z);
-    } else panel = null;
-  });
+    }
+  }
+
+  canvas.addEventListener("click", (e) => { handlePointer(canvasPoint(e)); });
+  canvas.addEventListener("touchend", (e) => {
+    if (!e.changedTouches || !e.changedTouches.length) return;
+    e.preventDefault();
+    handlePointer(canvasPoint(e));
+  }, { passive: false });
 
   let hoverZone = null;
   canvas.addEventListener("mousemove", (e) => {
     if (state !== STATE.PLAY) return;
     hoverZone = hitZone(canvasPoint(e).x, canvasPoint(e).y);
   });
+
+  /* HTML D-pad */
+  (function setupDpad() {
+    const dpad = document.getElementById("dpad");
+    if (!dpad) return;
+    const map = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight" };
+    function setDir(dir, on) {
+      touchPad[dir] = on;
+      const el = dpad.querySelector("[data-dir=" + dir + "]");
+      if (el) el.classList.toggle("active", on);
+    }
+    function bind(el) {
+      const dir = el.getAttribute("data-dir");
+      if (!dir) return;
+      const on = (ev) => { ev.preventDefault(); ev.stopPropagation(); setDir(dir, true); };
+      const off = (ev) => { ev.preventDefault(); ev.stopPropagation(); setDir(dir, false); };
+      el.addEventListener("touchstart", on, { passive: false });
+      el.addEventListener("touchend", off, { passive: false });
+      el.addEventListener("touchcancel", off, { passive: false });
+      el.addEventListener("mousedown", on);
+      window.addEventListener("mouseup", () => setDir(dir, false));
+    }
+    dpad.querySelectorAll(".btn[data-dir]").forEach(bind);
+  })();
 
   function rectsOverlap(a, b) {
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
@@ -303,10 +468,10 @@
 
   function updateTeacher() {
     let dx = 0, dy = 0;
-    if (keys["ArrowLeft"] || keys["KeyA"]) dx -= 1;
-    if (keys["ArrowRight"] || keys["KeyD"]) dx += 1;
-    if (keys["ArrowUp"] || keys["KeyW"]) dy -= 1;
-    if (keys["ArrowDown"] || keys["KeyS"]) dy += 1;
+    if (keys["ArrowLeft"] || keys["KeyA"] || touchPad.left) dx -= 1;
+    if (keys["ArrowRight"] || keys["KeyD"] || touchPad.right) dx += 1;
+    if (keys["ArrowUp"] || keys["KeyW"] || touchPad.up) dy -= 1;
+    if (keys["ArrowDown"] || keys["KeyS"] || touchPad.down) dy += 1;
     if (dx || dy) {
       const len = Math.sqrt(dx * dx + dy * dy) || 1;
       dx = (dx / len) * teacher.speed;
@@ -509,19 +674,19 @@
       const active = highlightZone === z.id || hoverZone === z;
       fillRect(z.x, z.y, z.w, z.h, active ? C.highlight : z.color);
       if (active) {
-        fillRect(z.x, z.y, z.w, 1, "rgba(240,193,75,0.55)");
-        fillRect(z.x, z.y + z.h - 1, z.w, 1, "rgba(240,193,75,0.55)");
-        fillRect(z.x, z.y, 1, z.h, "rgba(240,193,75,0.55)");
-        fillRect(z.x + z.w - 1, z.y, 1, z.h, "rgba(240,193,75,0.55)");
+        fillRect(z.x, z.y, z.w, 2, "rgba(240,193,75,0.55)");
+        fillRect(z.x, z.y + z.h - 2, z.w, 2, "rgba(240,193,75,0.55)");
+        fillRect(z.x, z.y, 2, z.h, "rgba(240,193,75,0.55)");
+        fillRect(z.x + z.w - 2, z.y, 2, z.h, "rgba(240,193,75,0.55)");
       }
       const label = z.key + " · " + z.name;
-      ctx.font = "bold 9px monospace";
+      ctx.font = "bold 13px monospace";
       const tw = ctx.measureText(label).width;
-      fillRect(z.x + 4, z.y + 4, tw + 10, 13, "rgba(255,248,238,0.90)");
-      fillRect(z.x + 4, z.y + 4, 3, 13, C.uiAccent);
-      fillRect(z.x + 4, z.y + 16, tw + 10, 1, "rgba(196,154,108,0.6)");
+      fillRect(z.x + 4, z.y + 4, tw + 14, 18, "rgba(255,248,238,0.92)");
+      fillRect(z.x + 4, z.y + 4, 4, 18, C.uiAccent);
+      fillRect(z.x + 4, z.y + 21, tw + 14, 2, "rgba(196,154,108,0.6)");
       ctx.fillStyle = C.zoneLabel;
-      ctx.fillText(label, z.x + 10, z.y + 14);
+      ctx.fillText(label, z.x + 12, z.y + 17);
     }
   }
 
@@ -533,36 +698,39 @@
   function drawTeacherSprite() {
     const f = walkFrame(teacher.walkPhase);
     const name = "teacher_" + teacher.facing + "_" + f;
-    blit(name, teacher.x - 1, teacher.y - 2);
+    const sc = CHAR_SCALE;
+    blitScaled(name, teacher.x - 2, teacher.y - 6, sc);
   }
 
   function drawStudentSprite(s) {
+    const sc = CHAR_SCALE * 0.95;
     if (s.seated) {
       const bob = Math.sin(s.bob) * 0.6;
-      blit("student_sit_" + s.sprite, s.x, s.y + bob);
+      blitScaled("student_sit_" + s.sprite, s.x - 2, s.y + bob - 4, sc);
     } else {
       const f = walkFrame(s.walkPhase || 0);
-      blit("student_walk_" + s.facing + "_" + f, s.x - 1, s.y - 2);
+      blitScaled("student_walk_" + s.facing + "_" + f, s.x - 2, s.y - 6, sc);
     }
   }
 
   function drawCatSprite() {
     const cx = cat.x, cy = cat.y;
+    const sc = CHAR_SCALE * 1.05;
     if (cat.moving) {
       const f = ((cat.walkPhase * 1.2) | 0) % 4;
       const dir = cat.facing === 1 ? 1 : 2;
-      blit("cat_walk_" + dir + "_" + f, cx, cy - Math.abs(Math.sin(cat.walkPhase)));
+      blitScaled("cat_walk_" + dir + "_" + f, cx - 2, cy - 4 - Math.abs(Math.sin(cat.walkPhase)), sc);
     } else if (cat.asleep) {
-      blit("cat_sleep", cx, cy);
+      blitScaled("cat_sleep", cx - 2, cy - 2, sc);
       if (frame % 50 < 25) {
         ctx.fillStyle = C.uiDim;
-        ctx.font = "6px monospace";
+        ctx.font = "10px monospace";
         ctx.textAlign = "left";
-        ctx.fillText("z", cx + 22, cy);
-        if (frame % 50 < 12) ctx.fillText("z", cx + 26, cy - 4);
+        ctx.fillText("z", cx + 28, cy);
+        if (frame % 50 < 12) ctx.fillText("z", cx + 34, cy - 6);
       }
     } else {
-      blit("cat_loaf", cx, cy);
+      blitScaled("cat_loaf", cx - 2, cy - 2, sc);
     }
   }
 
@@ -612,116 +780,134 @@
   function drawUIBar() {
     const barY = H - BAR_H;
     fillRect(0, barY, W, BAR_H, C.uiPanel);
-    fillRect(0, barY, W, 2, C.uiPanelBorder);
-    fillRect(0, barY + 2, W, 1, C.uiAccent);
-    fillRect(0, barY + 3, W, BAR_H - 3, C.uiPanelMid);
-    fillRect(0, barY + 3, W, 1, "rgba(255,248,238,0.06)");
+    fillRect(0, barY, W, 3, C.uiPanelBorder);
+    fillRect(0, barY + 3, W, 2, C.uiAccent);
+    fillRect(0, barY + 5, W, BAR_H - 5, C.uiPanelMid);
+    fillRect(0, barY + 5, W, 1, "rgba(255,248,238,0.06)");
 
-    fillRect(8, barY + 9, 128, 20, C.uiChip);
-    fillRect(8, barY + 9, 3, 20, C.uiAccent);
-    fillRect(8, barY + 9, 128, 1, "rgba(240,193,75,0.35)");
+    fillRect(8, barY + 12, 168, 28, C.uiChip);
+    fillRect(8, barY + 12, 4, 28, C.uiAccent);
+    fillRect(8, barY + 12, 168, 2, "rgba(240,193,75,0.35)");
     ctx.fillStyle = C.ui;
-    ctx.font = "bold 9px monospace";
+    ctx.font = "bold 13px monospace";
     ctx.textAlign = "left";
-    ctx.fillText("第 3 節 · 中四 ICT", 16, barY + 23);
+    ctx.fillText("第 3 節 · 中四 ICT", 18, barY + 31);
 
     ctx.fillStyle = C.uiDim;
-    ctx.font = "8px monospace";
-    ctx.fillText("Tsao Lap Cheung · 電腦室", 146, barY + 23);
+    ctx.font = "11px monospace";
+    ctx.fillText("Tsao Lap Cheung · 電腦室", 186, barY + 31);
 
-    const chipX = W - 180;
-    fillRect(chipX, barY + 9, 168, 20, C.uiChipAlt);
-    fillRect(chipX, barY + 9, 3, 20, "#68a858");
-    fillRect(chipX, barY + 9, 168, 1, "rgba(104,168,88,0.4)");
+    const chipX = W - 210;
+    fillRect(chipX, barY + 12, 198, 28, C.uiChipAlt);
+    fillRect(chipX, barY + 12, 4, 28, "#68a858");
+    fillRect(chipX, barY + 12, 198, 2, "rgba(104,168,88,0.4)");
     ctx.fillStyle = C.uiAccent;
-    ctx.font = "bold 8px monospace";
-    ctx.fillText("進行中", chipX + 10, barY + 23);
+    ctx.font = "bold 12px monospace";
+    ctx.fillText("進行中", chipX + 12, barY + 31);
     ctx.fillStyle = C.ui;
-    ctx.fillText("SBA 草稿檢查", chipX + 52, barY + 23);
+    ctx.fillText("SBA 草稿檢查", chipX + 64, barY + 31);
   }
 
   function drawPanel() {
     if (!panel) return;
     const { x, y, title, info } = panel;
-    const pw = 180, ph = 64;
-    fillRect(x + 3, y + 3, pw, ph, "rgba(0,0,0,0.45)");
+    const pw = panel.pw || 240, ph = panel.ph || 96;
+    fillRect(x + 4, y + 4, pw, ph, "rgba(0,0,0,0.45)");
     fillRect(x, y, pw, ph, C.uiPanel);
-    fillRect(x + 2, y + 2, pw - 4, ph - 4, C.uiPanelMid);
-    fillRect(x, y, pw, 3, C.uiAccent);
-    fillRect(x, y, 2, ph, C.uiPanelBorder);
-    fillRect(x + pw - 2, y, 2, ph, C.uiPanelBorder);
-    fillRect(x, y + ph - 2, pw, 2, C.uiPanelBorder);
-    fillRect(x, y, 8, 2, C.uiAccent);
-    fillRect(x + pw - 8, y, 8, 2, C.uiAccent);
+    fillRect(x + 3, y + 3, pw - 6, ph - 6, C.uiPanelMid);
+    fillRect(x, y, pw, 4, C.uiAccent);
+    fillRect(x, y, 3, ph, C.uiPanelBorder);
+    fillRect(x + pw - 3, y, 3, ph, C.uiPanelBorder);
+    fillRect(x, y + ph - 3, pw, 3, C.uiPanelBorder);
+
+    // close button (big tap target)
+    closeBtn = { x: x + pw - 36, y: y + 8, w: 28, h: 28 };
+    fillRect(closeBtn.x, closeBtn.y, closeBtn.w, closeBtn.h, "#5a3020");
+    fillRect(closeBtn.x, closeBtn.y, closeBtn.w, 2, C.uiAccent);
+    ctx.fillStyle = C.titleCream;
+    ctx.font = "bold 16px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("✕", closeBtn.x + closeBtn.w / 2, closeBtn.y + 20);
 
     ctx.fillStyle = C.titleGold;
-    ctx.font = "bold 11px monospace";
+    ctx.font = "bold 15px monospace";
     ctx.textAlign = "left";
-    ctx.fillText("▸ " + title, x + 10, y + 18);
+    ctx.fillText("▸ " + title, x + 12, y + 28);
 
     ctx.fillStyle = C.ui;
-    ctx.font = "8px monospace";
-    const maxW = pw - 20;
-    let line = "", ly = y + 34;
+    ctx.font = "12px monospace";
+    const maxW = pw - 24;
+    let line = "", ly = y + 48;
     for (const ch of info) {
       const test = line + ch;
       if (ctx.measureText(test).width > maxW) {
-        ctx.fillText(line, x + 10, ly);
-        line = ch; ly += 11;
-        if (ly > y + ph - 14) break;
+        ctx.fillText(line, x + 12, ly);
+        line = ch; ly += 15;
+        if (ly > y + ph - 22) break;
       } else line = test;
     }
-    if (line && ly <= y + ph - 14) ctx.fillText(line, x + 10, ly);
+    if (line && ly <= y + ph - 22) ctx.fillText(line, x + 12, ly);
 
     ctx.fillStyle = C.uiDim;
-    ctx.font = "7px monospace";
-    ctx.fillText("[Esc 關閉]", x + pw - 56, y + ph - 7);
+    ctx.font = "10px monospace";
+    ctx.textAlign = "left";
+    ctx.fillText("點外面／✕ 關閉", x + 12, y + ph - 10);
   }
 
   function drawTitle() {
     fillRect(0, 0, W, H, C.overlay);
-    const tw = 340, th = 160;
-    const tx = (W - tw) / 2, ty = (H - th) / 2 - 8;
-    fillRect(tx + 4, ty + 4, tw, th, "rgba(0,0,0,0.5)");
+    const tw = 420, th = 210;
+    const tx = (W - tw) / 2, ty = (H - th) / 2 - 6;
+    fillRect(tx + 5, ty + 5, tw, th, "rgba(0,0,0,0.5)");
     fillRect(tx, ty, tw, th, C.uiPanel);
-    fillRect(tx + 3, ty + 3, tw - 6, th - 6, C.uiPanelMid);
-    fillRect(tx, ty, tw, 4, C.uiAccent);
-    fillRect(tx, ty, 3, th, C.uiPanelBorder);
-    fillRect(tx + tw - 3, ty, 3, th, C.uiPanelBorder);
-    fillRect(tx, ty + th - 3, tw, 3, C.uiPanelBorder);
+    fillRect(tx + 4, ty + 4, tw - 8, th - 8, C.uiPanelMid);
+    fillRect(tx, ty, tw, 5, C.uiAccent);
+    fillRect(tx, ty, 4, th, C.uiPanelBorder);
+    fillRect(tx + tw - 4, ty, 4, th, C.uiPanelBorder);
+    fillRect(tx, ty + th - 4, tw, 4, C.uiPanelBorder);
 
-    // atlas decorations
-    blit("monitor", tx + 16, ty + 18);
-    blit("plant0", tx + tw - 40, ty + 20);
-    blit("cat_loaf", tx + 20, ty + th - 36);
-    blit("poster0", tx + tw - 48, ty + th - 48);
+    blitScaled("monitor", tx + 18, ty + 22, 1.4);
+    blitScaled("plant0", tx + tw - 52, ty + 22, 1.5);
+    blitScaled("cat_loaf", tx + 22, ty + th - 52, 1.6);
+    blitScaled("poster0", tx + tw - 58, ty + th - 62, 1.3);
 
     ctx.textAlign = "center";
     ctx.fillStyle = C.titleGold;
-    ctx.font = "bold 32px monospace";
-    ctx.fillText("像素課室", W / 2, ty + 52);
-    fillRect(W / 2 - 60, ty + 58, 120, 2, C.uiAccent);
+    ctx.font = "bold 40px monospace";
+    ctx.fillText("像素課室", W / 2, ty + 58);
+    fillRect(W / 2 - 72, ty + 66, 144, 3, C.uiAccent);
 
     ctx.fillStyle = C.titleCream;
-    ctx.font = "13px monospace";
-    ctx.fillText("上課，像玩遊戲一樣", W / 2, ty + 82);
+    ctx.font = "16px monospace";
+    ctx.fillText("上課，像玩遊戲一樣", W / 2, ty + 94);
 
     ctx.fillStyle = C.uiDim;
-    ctx.font = "9px monospace";
-    ctx.fillText("香港中學 ICT 電腦室 · Teacher Lap Cheung Tsao", W / 2, ty + 104);
+    ctx.font = "12px monospace";
+    ctx.fillText("香港中學 ICT 電腦室 · Teacher Lap Cheung Tsao", W / 2, ty + 118);
 
+    // Big Start button
+    startBtn = { x: W / 2 - 110, y: ty + 138, w: 220, h: 44 };
     const blink = Math.floor(frame / 28) % 2 === 0;
-    ctx.fillStyle = blink ? C.uiAccent : C.uiDim;
-    ctx.font = "bold 11px monospace";
-    ctx.fillText("▶  按 Space / Enter 進入課室", W / 2, ty + 132);
+    fillRect(startBtn.x + 3, startBtn.y + 3, startBtn.w, startBtn.h, "rgba(0,0,0,0.4)");
+    fillRect(startBtn.x, startBtn.y, startBtn.w, startBtn.h, blink ? "#6b4423" : "#5a3820");
+    fillRect(startBtn.x, startBtn.y, startBtn.w, 3, C.uiAccent);
+    fillRect(startBtn.x, startBtn.y, 3, startBtn.h, C.uiPanelBorder);
+    fillRect(startBtn.x + startBtn.w - 3, startBtn.y, 3, startBtn.h, C.uiPanelBorder);
+    fillRect(startBtn.x, startBtn.y + startBtn.h - 3, startBtn.w, 3, C.uiPanelBorder);
+    ctx.fillStyle = blink ? C.uiAccent : C.titleCream;
+    ctx.font = "bold 18px monospace";
+    ctx.fillText("▶  開始上課", W / 2, startBtn.y + 29);
   }
 
   function drawHint() {
     if (state !== STATE.PLAY || panel) return;
     ctx.textAlign = "left";
-    ctx.fillStyle = "rgba(255,248,238,0.45)";
-    ctx.font = "7px monospace";
-    ctx.fillText("WASD／方向鍵移動 · 點擊區域 · 1–4 高亮 · Esc 關閉", room.x + 6, room.y + room.h - 8);
+    ctx.fillStyle = "rgba(255,248,238,0.55)";
+    ctx.font = "11px monospace";
+    const hint = isTouchUI
+      ? "虛擬方向鍵移動 · 點擊區域開啟 · 點外面／✕ 關閉"
+      : "WASD／方向鍵 · 點擊區域 · 1–4 高亮 · Esc 關閉";
+    ctx.fillText(hint, room.x + 6, room.y + room.h - 10);
   }
 
   function update() {
