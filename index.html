@@ -300,7 +300,10 @@
   ];
 
   const FURN_SC = 1.55;   /* furniture larger on phone */
-  const CHAR_SCALE = 2.85; /* characters MUCH larger */
+  const CHAR_SCALE = 2;   /* 16px art ×2 = readable on phone */
+  const CHAR_W = 16, CHAR_H = 24;
+  const CAT_W = 16, CAT_H = 12;
+  const cam = { x: 0, y: 0, tx: 0, ty: 0 };
 
   const solids = [];
   const teacherDesk = {
@@ -341,37 +344,51 @@
 
   solids.push({ x: 1, y: room.y + 300, w: WALL_S - 2, h: 70, kind: "door" });
 
+  /* facing: 0=down 1=left 2=right 3=up — top-down standard */
   const teacher = {
-    x: room.x + room.w / 2 - 10, y: room.y + 115,
-    w: 18, h: 24, speed: 1.85, facing: 0, walkPhase: 0,
+    x: room.x + room.w / 2 - CHAR_W / 2, y: room.y + 108,
+    w: CHAR_W, h: CHAR_H, speed: 1.55,
+    facing: 0, state: "idle", animDist: 0, vx: 0, vy: 0,
   };
 
-  const studentColors = [0,1,2,3,4,5];
+  const studentPalettes = [
+    { shirt: "#e07848", pants: "#3a5080", hair: "#2c2438" },
+    { shirt: "#58a0d0", pants: "#3a5080", hair: "#4a3020" },
+    { shirt: "#68a858", pants: "#3a5080", hair: "#1a2030" },
+    { shirt: "#c86890", pants: "#3a5080", hair: "#5a3848" },
+    { shirt: "#d0a040", pants: "#3a5080", hair: "#2c2438" },
+    { shirt: "#7078b0", pants: "#3a5080", hair: "#3a2820" },
+  ];
   const students = [];
   for (let i = 0; i < deskPositions.length; i++) {
     const d = deskPositions[i];
     students.push({
-      x: d.x + 38, y: d.y + 34, seated: true,
-      sprite: studentColors[i % studentColors.length], bob: i * 0.9, facing: 3,
+      x: d.x + 42, y: d.y + 22, seated: true,
+      pal: i % studentPalettes.length, bob: i * 0.9,
+      facing: 3, state: "idle", animDist: 0,
+      w: CHAR_W, h: CHAR_H,
     });
   }
   students.push({
-    x: room.x + 70, y: room.y + 420, seated: false,
-    sprite: 5, bob: 0, walkPhase: 0, facing: 2,
+    x: room.x + 70, y: room.y + 410, seated: false,
+    pal: 5, bob: 0, facing: 2, state: "idle", animDist: 0,
+    w: CHAR_W, h: CHAR_H,
     path: [
-      { x: room.x + 70, y: room.y + 420 },
-      { x: room.x + 250, y: room.y + 420 },
-      { x: room.x + 250, y: room.y + 380 },
-      { x: room.x + 70, y: room.y + 380 },
+      { x: room.x + 70, y: room.y + 410 },
+      { x: room.x + 250, y: room.y + 410 },
+      { x: room.x + 250, y: room.y + 370 },
+      { x: room.x + 70, y: room.y + 370 },
     ],
-    pi: 0,
+    pi: 0, speed: 0.55,
   });
 
   const cat = {
-    x: deskPositions[1].x + 50, y: deskPositions[1].y - 6,
-    homeX: deskPositions[1].x + 50, homeY: deskPositions[1].y - 6,
-    tx: deskPositions[1].x + 50, ty: deskPositions[1].y - 6,
-    asleep: true, blink: 0, walkPhase: 0, facing: 2, moving: false,
+    x: deskPositions[1].x + 42, y: deskPositions[1].y - 10,
+    homeX: deskPositions[1].x + 42, homeY: deskPositions[1].y - 10,
+    tx: deskPositions[1].x + 42, ty: deskPositions[1].y - 10,
+    w: CAT_W, h: CAT_H,
+    asleep: true, blink: 0, animDist: 0, facing: 2,
+    state: "idle", speed: 0.7,
   };
 
   const carpet = { x: room.x + 10, y: room.y + 368, w: room.w - 20, h: 96 };
@@ -481,6 +498,10 @@
     return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
   }
 
+  function screenToWorld(p) {
+    return { x: p.x + cam.x, y: p.y + cam.y };
+  }
+
   function handlePointer(p) {
     if (state === STATE.TITLE) {
       if (hitRect(p, startBtn) || true) beginPlay();
@@ -493,7 +514,8 @@
       if (!inside) { panel = null; highlightZone = -1; return; }
       return;
     }
-    const z = hitZone(p.x, p.y);
+    const w = screenToWorld(p);
+    const z = hitZone(w.x, w.y);
     if (z) {
       highlightZone = z.id; highlightTimer = 70; openPanelForZone(z);
     }
@@ -509,7 +531,8 @@
   let hoverZone = null;
   canvas.addEventListener("mousemove", (e) => {
     if (state !== STATE.PLAY) return;
-    hoverZone = hitZone(canvasPoint(e).x, canvasPoint(e).y);
+    const w = screenToWorld(canvasPoint(e));
+    hoverZone = hitZone(w.x, w.y);
   });
 
   /* HTML D-pad */
@@ -562,90 +585,195 @@
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   }
 
-  function blocked(nx, ny) {
-    const box = { x: nx, y: ny + 10, w: teacher.w, h: teacher.h - 8 };
-    if (box.x < room.x + 3 || box.y < room.y + 4 ||
-        box.x + box.w > room.x + room.w - 3 ||
-        box.y + box.h > room.y + room.h - 3) return true;
+  /* Fair furniture AABB: collide with the solid base, not the tall visual (monitors etc.) */
+  function solidHitbox(s) {
+    if (s.kind === "door") return null;
+    if (s.kind === "desk" || s.kind === "teacherDesk") {
+      return { x: s.x + 6, y: s.y + s.h - 16, w: s.w - 12, h: 16 };
+    }
+    if (s.kind === "round") {
+      return { x: s.x + 10, y: s.y + 12, w: s.w - 20, h: s.h - 22 };
+    }
+    if (s.kind === "shelf") {
+      return { x: s.x + 4, y: s.y + 6, w: s.w - 8, h: s.h - 8 };
+    }
+    if (s.kind === "cabinet") {
+      return { x: s.x + 4, y: s.y + 10, w: s.w - 8, h: s.h - 12 };
+    }
+    if (s.kind === "board") {
+      return { x: s.x + 8, y: s.y, w: s.w - 16, h: Math.max(8, s.h - 2) };
+    }
+    if (s.kind === "plant") {
+      return { x: s.x + 5, y: s.y + 14, w: s.w - 10, h: s.h - 14 };
+    }
+    return { x: s.x + 2, y: s.y + Math.max(0, s.h - 14), w: s.w - 4, h: Math.min(s.h, 16) };
+  }
+
+  /* Foot AABB — only the soles collide, so shoulders can overlap desk tops fairly */
+  function footBox(nx, ny, ent) {
+    const w = ent.w, h = ent.h;
+    return {
+      x: nx + 3,
+      y: ny + h - 7,
+      w: w - 6,
+      h: 6,
+    };
+  }
+
+  function blockedAt(nx, ny, ent) {
+    const box = footBox(nx, ny, ent);
+    if (box.x < room.x + 2 || box.y < room.y + 6 ||
+        box.x + box.w > room.x + room.w - 2 ||
+        box.y + box.h > room.y + room.h - 2) return true;
     for (const s of solids) {
-      if (s.kind === "door") continue;
-      const hit = { x: s.x + 2, y: s.y + Math.max(0, s.h - 16), w: s.w - 4, h: Math.min(s.h, 18) };
+      const hit = solidHitbox(s);
+      if (!hit) continue;
       if (rectsOverlap(box, hit)) return true;
     }
     return false;
   }
 
+  function setFacingFromInput(ent, ix, iy) {
+    if (ix === 0 && iy === 0) return;
+    if (Math.abs(ix) > Math.abs(iy)) ent.facing = ix < 0 ? 1 : 2;
+    else if (Math.abs(iy) > Math.abs(ix)) ent.facing = iy < 0 ? 3 : 0;
+    else {
+      /* diagonal: prefer the axis that matches current facing if possible, else horizontal */
+      if (ent.facing === 1 || ent.facing === 2) ent.facing = ix < 0 ? 1 : 2;
+      else ent.facing = iy < 0 ? 3 : 0;
+    }
+  }
+
+  function moveAABB(ent, vx, vy) {
+    let mx = 0, my = 0;
+    if (vx && !blockedAt(ent.x + vx, ent.y, ent)) { ent.x += vx; mx = vx; }
+    if (vy && !blockedAt(ent.x, ent.y + vy, ent)) { ent.y += vy; my = vy; }
+    /* corner slide: if both blocked individually but we wanted diagonal, already handled */
+    const dist = Math.hypot(mx, my);
+    if (dist > 0.01) {
+      ent.state = "walk";
+      ent.animDist += dist;
+      ent.vx = mx; ent.vy = my;
+    } else {
+      ent.state = "idle";
+      ent.vx = 0; ent.vy = 0;
+    }
+    return dist;
+  }
+
+  function walkFrameFromDist(ent) {
+    if (ent.state !== "walk") return 0;
+    /* stride ~5px per frame → 4-frame cycle synced to velocity */
+    return ((ent.animDist / 5) | 0) % 4;
+  }
+
   function updateTeacher() {
-    let dx = 0, dy = 0;
-    if (keys["ArrowLeft"] || keys["KeyA"] || touchPad.left) dx -= 1;
-    if (keys["ArrowRight"] || keys["KeyD"] || touchPad.right) dx += 1;
-    if (keys["ArrowUp"] || keys["KeyW"] || touchPad.up) dy -= 1;
-    if (keys["ArrowDown"] || keys["KeyS"] || touchPad.down) dy += 1;
-    if (dx || dy) {
-      const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      dx = (dx / len) * teacher.speed;
-      dy = (dy / len) * teacher.speed;
-      if (Math.abs(dx) > Math.abs(dy)) teacher.facing = dx < 0 ? 1 : 2;
-      else teacher.facing = dy < 0 ? 3 : 0;
-      teacher.walkPhase += 0.22;
-      if (!blocked(teacher.x + dx, teacher.y)) teacher.x += dx;
-      if (!blocked(teacher.x, teacher.y + dy)) teacher.y += dy;
-    } else teacher.walkPhase = 0;
+    let ix = 0, iy = 0;
+    if (keys["ArrowLeft"] || keys["KeyA"] || touchPad.left) ix -= 1;
+    if (keys["ArrowRight"] || keys["KeyD"] || touchPad.right) ix += 1;
+    if (keys["ArrowUp"] || keys["KeyW"] || touchPad.up) iy -= 1;
+    if (keys["ArrowDown"] || keys["KeyS"] || touchPad.down) iy += 1;
+
+    if (ix || iy) {
+      const len = Math.hypot(ix, iy) || 1;
+      const vx = (ix / len) * teacher.speed;
+      const vy = (iy / len) * teacher.speed;
+      setFacingFromInput(teacher, ix, iy);
+      moveAABB(teacher, vx, vy);
+    } else {
+      teacher.state = "idle";
+      teacher.vx = 0; teacher.vy = 0;
+    }
   }
 
   function updateStudents() {
     for (const s of students) {
-      if (s.seated) { s.bob += 0.035; continue; }
+      if (s.seated) { s.bob += 0.035; s.state = "idle"; continue; }
       if (!s.path) continue;
       const target = s.path[s.pi];
       const dx = target.x - s.x, dy = target.y - s.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 1.2) s.pi = (s.pi + 1) % s.path.length;
-      else {
-        s.x += (dx / dist) * 0.42;
-        s.y += (dy / dist) * 0.42;
-        s.walkPhase += 0.16;
-        if (Math.abs(dx) > Math.abs(dy)) s.facing = dx < 0 ? 1 : 2;
-        else s.facing = dy < 0 ? 3 : 0;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 1.5) {
+        s.pi = (s.pi + 1) % s.path.length;
+        s.state = "idle";
+        s.vx = 0; s.vy = 0;
+      } else {
+        const sp = s.speed || 0.5;
+        const vx = (dx / dist) * sp;
+        const vy = (dy / dist) * sp;
+        setFacingFromInput(s, dx, dy);
+        /* NPCs soft-move (no hard desk collision on patrol path) */
+        s.x += vx; s.y += vy;
+        s.state = "walk";
+        s.animDist += sp;
+        s.vx = vx; s.vy = vy;
       }
     }
   }
 
   function updateCat() {
     cat.blink++;
-    if (!cat.moving) {
+    if (cat.state !== "walk") {
       if (cat.blink > 180) {
         cat.asleep = !cat.asleep;
         cat.blink = 0;
         if (!cat.asleep && Math.random() < 0.45) {
-          cat.moving = true;
           const spots = [
-            { x: deskPositions[1].x + 20, y: deskPositions[1].y - 4 },
-            { x: deskPositions[3].x + 40, y: deskPositions[3].y - 2 },
-            { x: room.x + 80, y: room.y + 440 },
-            { x: room.x + 240, y: room.y + 440 },
+            { x: deskPositions[1].x + 20, y: deskPositions[1].y - 8 },
+            { x: deskPositions[3].x + 40, y: deskPositions[3].y - 6 },
+            { x: room.x + 80, y: room.y + 430 },
+            { x: room.x + 240, y: room.y + 430 },
             { x: cat.homeX, y: cat.homeY },
           ];
           const pick = spots[(Math.random() * spots.length) | 0];
           cat.tx = pick.x; cat.ty = pick.y;
+          cat.state = "walk";
+          cat.asleep = false;
         }
       }
     } else {
       const dx = cat.tx - cat.x, dy = cat.ty - cat.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      const dist = Math.hypot(dx, dy);
       if (dist < 1.5) {
         cat.x = cat.tx; cat.y = cat.ty;
-        cat.moving = false;
+        cat.state = "idle";
         cat.asleep = Math.random() < 0.6;
-        cat.blink = 0; cat.walkPhase = 0;
+        cat.blink = 0; cat.animDist = 0;
+        cat.vx = 0; cat.vy = 0;
       } else {
-        cat.x += (dx / dist) * 0.55;
-        cat.y += (dy / dist) * 0.55;
-        cat.walkPhase += 0.2;
-        cat.facing = dx < 0 ? 1 : 2;
+        const vx = (dx / dist) * cat.speed;
+        const vy = (dy / dist) * cat.speed;
+        cat.x += vx; cat.y += vy;
+        cat.animDist += cat.speed;
+        cat.vx = vx; cat.vy = vy;
+        setFacingFromInput(cat, dx, dy);
         cat.asleep = false;
       }
     }
+  }
+
+  function updateCamera() {
+    /* Soft follow with look-ahead in facing direction; clamp to room */
+    const look = 18;
+    let lx = 0, ly = 0;
+    if (teacher.facing === 1) lx = -look;
+    else if (teacher.facing === 2) lx = look;
+    else if (teacher.facing === 3) ly = -look;
+    else ly = look;
+    const cx = teacher.x + teacher.w / 2 + lx;
+    const cy = teacher.y + teacher.h / 2 + ly;
+    const viewH = H - BAR_H;
+    cam.tx = cx - W / 2;
+    cam.ty = cy - viewH / 2;
+    const maxX = Math.max(0, (room.x + room.w) - W);
+    const maxY = Math.max(0, (room.y + room.h) - viewH);
+    cam.tx = Math.max(0, Math.min(cam.tx, maxX));
+    cam.ty = Math.max(0, Math.min(cam.ty, maxY));
+    /* ease */
+    cam.x += (cam.tx - cam.x) * 0.12;
+    cam.y += (cam.ty - cam.y) * 0.12;
+    if (Math.abs(cam.tx - cam.x) < 0.05) cam.x = cam.tx;
+    if (Math.abs(cam.ty - cam.y) < 0.05) cam.y = cam.ty;
   }
 
   function fillRect(x, y, w, h, color) {
@@ -805,45 +933,207 @@
     }
   }
 
-  function walkFrame(phase) {
-    if (!phase) return 0;
-    return ((phase * 1.5) | 0) % 4;
+  /* ── Minimal Pixel Art characters (16×24 / 16×12) — procedural, clean faces ── */
+  const PX = {
+    skin: "#f0c8a8", skinS: "#d4a080",
+    eye: "#1a1420", mouth: "#c87868",
+    tHair: "#2c2438",
+    tShirt: "#3a6ea5", tShirtL: "#5a8ec5", tCollar: "#fff8ee", tBadge: "#f0c14b",
+    tPants: "#2a3548", shoe: "#1a1420",
+    cat: "#d4a06a", catL: "#f0d0a8", catD: "#a07040",
+    catNose: "#e87890", catIris: "#68a858", catEar: "#e8a0a8",
+  };
+
+  function px(ox, oy, S, x, y, w, h, col) {
+    if (!col) return;
+    ctx.fillStyle = col;
+    ctx.fillRect(((ox + x * S) + 0.5) | 0, ((oy + y * S) + 0.5) | 0, (w * S + 0.5) | 0, (h * S + 0.5) | 0);
   }
 
-  function drawTeacherSprite() {
-    const f = walkFrame(teacher.walkPhase);
-    const name = "teacher_" + teacher.facing + "_" + f;
-    blitScaled(name, teacher.x - 4, teacher.y - 10, CHAR_SCALE);
+  /* Clean front face: symmetric 1×1 eyes, 2×1 mouth — no grotesque blobs */
+  function drawFaceDown(ox, oy, S, hair) {
+    px(ox, oy, S, 3, 0, 10, 2, hair);
+    px(ox, oy, S, 2, 1, 12, 2, hair);
+    px(ox, oy, S, 2, 2, 2, 3, hair); px(ox, oy, S, 12, 2, 2, 3, hair);
+    px(ox, oy, S, 4, 2, 8, 1, hair); /* bangs */
+    px(ox, oy, S, 3, 2, 10, 5, PX.skin);
+    px(ox, oy, S, 5, 4, 1, 1, PX.eye); px(ox, oy, S, 10, 4, 1, 1, PX.eye);
+    px(ox, oy, S, 7, 6, 2, 1, PX.mouth);
   }
 
-  function drawStudentSprite(s) {
-    const sc = CHAR_SCALE * 0.92;
-    if (s.seated) {
-      const bob = Math.sin(s.bob) * 0.8;
-      blitScaled("student_sit_" + s.sprite, s.x - 4, s.y + bob - 8, sc);
+  function drawFaceUp(ox, oy, S, hair) {
+    px(ox, oy, S, 3, 0, 10, 2, hair);
+    px(ox, oy, S, 2, 1, 12, 6, hair);
+    px(ox, oy, S, 3, 6, 10, 1, PX.skinS); /* neck hint */
+  }
+
+  function drawFaceSide(ox, oy, S, hair, facingLeft) {
+    /* Mirror coordinates so left/right share one clean profile */
+    function X(x, w) { return facingLeft ? x : (16 - x - w); }
+    px(ox, oy, S, X(3, 10), 0, 10, 2, hair);
+    px(ox, oy, S, X(2, 12), 1, 12, 2, hair);
+    px(ox, oy, S, X(3, 10), 2, 10, 5, PX.skin);
+    px(ox, oy, S, X(2, 4), 2, 4, 5, hair); /* hair bulk at back */
+    px(ox, oy, S, X(2, 2), 3, 2, 2, PX.skinS); /* ear */
+    px(ox, oy, S, X(9, 1), 4, 1, 1, PX.eye);   /* one readable eye */
+    px(ox, oy, S, X(8, 2), 6, 2, 1, PX.mouth);
+  }
+
+  function legOffsets(frame) {
+    /* 0 idle, 1 L forward, 2 plant, 3 R forward */
+    if (frame === 1) return { l: -1, r: 1, bob: 0 };
+    if (frame === 2) return { l: 0, r: 0, bob: -1 };
+    if (frame === 3) return { l: 1, r: -1, bob: 0 };
+    return { l: 0, r: 0, bob: 0 };
+  }
+
+  function drawHuman(ox, oy, facing, frame, seated, pal) {
+    const S = CHAR_SCALE;
+    const hair = pal.hair;
+    const shirt = pal.shirt;
+    const pants = pal.pants;
+    const isTeacher = !!pal.badge;
+    const legs = legOffsets(seated ? 0 : frame);
+    const bob = seated ? 0 : legs.bob;
+
+    oy = oy + bob * S;
+
+    if (facing === 0) drawFaceDown(ox, oy, S, hair);
+    else if (facing === 3) drawFaceUp(ox, oy, S, hair);
+    else drawFaceSide(ox, oy, S, hair, facing === 1);
+
+    /* torso */
+    if (facing === 3) {
+      /* back of shirt */
+      px(ox, oy, S, 3, 8, 10, 1, shirt);
+      px(ox, oy, S, 2, 9, 12, 5, shirt);
+      px(ox, oy, S, 3, 14, 10, 1, shirt);
+    } else if (facing === 0) {
+      if (isTeacher) {
+        px(ox, oy, S, 3, 8, 10, 1, PX.tCollar);
+        px(ox, oy, S, 2, 9, 12, 1, shirt);
+        px(ox, oy, S, 7, 9, 2, 1, pal.badge);
+        px(ox, oy, S, 1, 10, 14, 4, shirt);
+        px(ox, oy, S, 2, 14, 12, 1, shirt);
+      } else {
+        px(ox, oy, S, 3, 8, 10, 1, "#fff8ee");
+        px(ox, oy, S, 2, 9, 12, 6, shirt);
+        /* hands */
+        px(ox, oy, S, 1, 12, 2, 2, PX.skin);
+        px(ox, oy, S, 13, 12, 2, 2, PX.skin);
+      }
     } else {
-      const f = walkFrame(s.walkPhase || 0);
-      blitScaled("student_walk_" + s.facing + "_" + f, s.x - 4, s.y - 10, sc);
+      /* side torso */
+      px(ox, oy, S, 4, 8, 8, 7, shirt);
+      px(ox, oy, S, facing === 1 ? 3 : 11, 11, 2, 2, PX.skin); /* near hand */
+    }
+
+    if (seated) {
+      /* seated: shorter legs tucked */
+      px(ox, oy, S, 4, 15, 8, 3, pants);
+      px(ox, oy, S, 3, 17, 4, 2, PX.shoe);
+      px(ox, oy, S, 9, 17, 4, 2, PX.shoe);
+      return;
+    }
+
+    /* walking / idle legs — 4-dir */
+    if (facing === 1 || facing === 2) {
+      /* side-view legs: overlap with stride */
+      const front = legs.l;
+      const back = legs.r;
+      px(ox, oy, S, 6, 15 + back, 3, 6, pants);
+      px(ox, oy, S, 6, 21 + back, 3, 2, PX.shoe);
+      px(ox, oy, S, 8, 15 + front, 3, 6, pants);
+      px(ox, oy, S, 8, 21 + front, 3, 2, PX.shoe);
+    } else {
+      px(ox, oy, S, 4, 15 + legs.l, 3, 6, pants);
+      px(ox, oy, S, 9, 15 + legs.r, 3, 6, pants);
+      px(ox, oy, S, 4, 21 + legs.l, 3, 2, PX.shoe);
+      px(ox, oy, S, 9, 21 + legs.r, 3, 2, PX.shoe);
     }
   }
 
-  function drawCatSprite() {
-    const sc = CHAR_SCALE * 1.1;
-    if (cat.moving) {
-      const f = ((cat.walkPhase * 1.2) | 0) % 4;
-      const dir = cat.facing === 1 ? 1 : 2;
-      blitScaled("cat_walk_" + dir + "_" + f, cat.x - 4, cat.y - 6 - Math.abs(Math.sin(cat.walkPhase)), sc);
-    } else if (cat.asleep) {
-      blitScaled("cat_sleep", cat.x - 4, cat.y - 4, sc);
-      if (frame % 50 < 25) {
-        ctx.fillStyle = C.uiDim;
-        ctx.font = "12px monospace";
-        ctx.textAlign = "left";
-        ctx.fillText("z", cat.x + 34, cat.y);
-        if (frame % 50 < 12) ctx.fillText("z", cat.x + 42, cat.y - 8);
-      }
+  function drawCatProc(ox, oy, facing, frame, asleep, loaf) {
+    const S = CHAR_SCALE;
+    const bob = (frame === 1 || frame === 3) ? -1 : 0;
+    oy = oy + bob * S;
+
+    if (asleep) {
+      /* loaf asleep — closed eyes as dashes */
+      px(ox, oy, S, 2, 2, 12, 8, PX.cat);
+      px(ox, oy, S, 1, 4, 14, 5, PX.cat);
+      px(ox, oy, S, 3, 1, 2, 2, PX.cat); px(ox, oy, S, 11, 1, 2, 2, PX.cat);
+      px(ox, oy, S, 3, 1, 1, 1, PX.catEar); px(ox, oy, S, 12, 1, 1, 1, PX.catEar);
+      px(ox, oy, S, 4, 4, 8, 4, PX.catL);
+      px(ox, oy, S, 5, 5, 2, 1, PX.eye); px(ox, oy, S, 9, 5, 2, 1, PX.eye); /* - - */
+      px(ox, oy, S, 7, 7, 2, 1, PX.catNose);
+      px(ox, oy, S, 2, 9, 2, 2, PX.catD); px(ox, oy, S, 12, 9, 2, 2, PX.catD);
+      return;
+    }
+
+    /* ears */
+    px(ox, oy, S, 3, 0, 2, 2, PX.cat); px(ox, oy, S, 11, 0, 2, 2, PX.cat);
+    px(ox, oy, S, 3, 0, 1, 1, PX.catEar); px(ox, oy, S, 12, 0, 1, 1, PX.catEar);
+
+    if (facing === 1 || facing === 2) {
+      /* side */
+      const left = facing === 1;
+      px(ox, oy, S, 2, 2, 11, 7, PX.cat);
+      px(ox, oy, S, left ? 3 : 8, 3, 5, 4, PX.catL);
+      px(ox, oy, S, left ? 5 : 10, 4, 1, 1, PX.eye);
+      px(ox, oy, S, left ? 6 : 9, 4, 1, 1, PX.catIris);
+      px(ox, oy, S, left ? 7 : 8, 6, 1, 1, PX.catNose);
+      /* legs */
+      px(ox, oy, S, 3, 9, 2, 2, PX.catD);
+      px(ox, oy, S, 6, 9 + (frame % 2), 2, 2, PX.catD);
+      px(ox, oy, S, 9, 9 + ((frame + 1) % 2), 2, 2, PX.catD);
+      /* tail */
+      px(ox, oy, S, left ? 12 : 1, 4, 2, 1, PX.catD);
+      px(ox, oy, S, left ? 13 : 0, 3, 2, 1, PX.cat);
     } else {
-      blitScaled("cat_loaf", cat.x - 4, cat.y - 4, sc);
+      /* front / back */
+      px(ox, oy, S, 2, 2, 12, 7, PX.cat);
+      if (facing === 0) {
+        px(ox, oy, S, 4, 3, 8, 5, PX.catL);
+        px(ox, oy, S, 5, 4, 1, 1, PX.eye); px(ox, oy, S, 6, 4, 1, 1, PX.catIris);
+        px(ox, oy, S, 9, 4, 1, 1, PX.eye); px(ox, oy, S, 10, 4, 1, 1, PX.catIris);
+        px(ox, oy, S, 7, 6, 2, 1, PX.catNose);
+        px(ox, oy, S, 7, 7, 2, 1, PX.mouth);
+      } else {
+        px(ox, oy, S, 3, 2, 10, 6, PX.cat);
+        px(ox, oy, S, 7, 3, 2, 4, PX.catD); /* back stripe */
+      }
+      px(ox, oy, S, 3, 9, 2, 2, PX.catD);
+      px(ox, oy, S, 7, 9, 2, 2, PX.catD);
+      px(ox, oy, S, 11, 9, 2, 2, PX.catD);
+    }
+  }
+
+  function drawTeacherSprite() {
+    const f = walkFrameFromDist(teacher);
+    const pal = {
+      hair: PX.tHair, shirt: PX.tShirt, pants: PX.tPants, badge: PX.tBadge,
+    };
+    drawHuman(teacher.x, teacher.y, teacher.facing, f, false, pal);
+  }
+
+  function drawStudentSprite(s) {
+    const base = studentPalettes[s.pal % studentPalettes.length];
+    const pal = { hair: base.hair, shirt: base.shirt, pants: base.pants };
+    const bob = s.seated ? Math.sin(s.bob) * 0.6 : 0;
+    const f = walkFrameFromDist(s);
+    drawHuman(s.x, s.y + bob, s.facing, f, !!s.seated, pal);
+  }
+
+  function drawCatSprite() {
+    const f = cat.state === "walk" ? (((cat.animDist / 4) | 0) % 4) : 0;
+    drawCatProc(cat.x, cat.y, cat.facing, f, !!cat.asleep && cat.state !== "walk", cat.state === "idle" && !cat.asleep);
+    if (cat.asleep && cat.state !== "walk" && frame % 50 < 25) {
+      ctx.fillStyle = C.uiDim;
+      ctx.font = "12px monospace";
+      ctx.textAlign = "left";
+      ctx.fillText("z", cat.x + 28, cat.y);
+      if (frame % 50 < 12) ctx.fillText("z", cat.x + 36, cat.y - 8);
     }
   }
 
@@ -851,11 +1141,11 @@
     const ents = [];
     for (const s of students) {
       ents.push({
-        y: s.seated ? s.y + 14 : s.y + 18,
+        y: s.y + s.h,
         draw: () => drawStudentSprite(s),
       });
     }
-    ents.push({ y: cat.y + 14, draw: drawCatSprite });
+    ents.push({ y: cat.y + cat.h, draw: drawCatSprite });
     ents.push({ y: teacher.y + teacher.h, draw: drawTeacherSprite });
     ents.sort((a, b) => a.y - b.y);
     for (const e of ents) e.draw();
@@ -976,7 +1266,7 @@
 
     blitScaled("monitor", tx + 16, ty + 24, 1.6);
     blitScaled("plant0", tx + tw - 56, ty + 22, 1.7);
-    blitScaled("cat_loaf", tx + 18, ty + th - 70, 2.0);
+    drawCatProc(tx + 18, ty + th - 70, 0, 0, false, true);
     blitScaled("poster0", tx + tw - 62, ty + th - 80, 1.5);
 
     ctx.textAlign = "center";
@@ -1032,12 +1322,23 @@
       updateTeacher();
       updateStudents();
       updateCat();
+      updateCamera();
+    } else {
+      cam.x += (0 - cam.x) * 0.2;
+      cam.y += (0 - cam.y) * 0.2;
     }
   }
 
   function render() {
     ctx.imageSmoothingEnabled = false;
     fillRect(0, 0, W, H, C.bg);
+
+    /* World layer — camera follow (portrait 360×640 playfield) */
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, W, H - BAR_H);
+    ctx.clip();
+    ctx.translate(((-cam.x) + 0.5) | 0, ((-cam.y) + 0.5) | 0);
     drawWalls();
     drawFloor();
     drawCarpet();
@@ -1046,8 +1347,11 @@
     drawEntities();
     drawLighting();
     drawZoneLabels();
-    drawUIBar();
     drawHint();
+    ctx.restore();
+
+    /* Screen-space UI */
+    drawUIBar();
     drawPanel();
     if (state === STATE.TITLE) drawTitle();
   }

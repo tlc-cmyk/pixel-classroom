@@ -39,14 +39,22 @@ GitHub Pages：https://tlc-cmyk.github.io/pixel-classroom/
 | WASD／方向鍵（桌面） | 移動 |
 | 1–4／E／Esc（桌面） | 區域高亮、互動、關閉 |
 
+## 角色與移動（專業 top-down）
+
+- **Minimal Pixel Art 臉**：老師／學生／貓以程序繪製 16×24／16×12，對稱眼睛＋簡潔嘴巴，無畸形比例
+- **狀態機**：`idle` / `walk`；四向面向（下／左／右／上）
+- **步行週期**：動畫幀與實際位移同步（stride），卡住時不空踏
+- **公平 AABB**：腳底碰撞盒 vs 傢俬底座；X／Y 分離解析，不會穿桌滑過
+- **鏡頭**：直式 360×640 畫面軟跟隨老師（look-ahead＋邊界夾緊）
+
 ## 技術備註
 
 - 單一 `index.html`，適合 GitHub Pages 根目錄部署
-- `assets/atlas.png` + `atlas.json` 為圖集源檔（執行期只用 HTML 內嵌）
-- 簡易矩形碰撞；離線、繁體中文 UI
+- 傢俬仍用內嵌 atlas；角色改為程序像素繪製（離線、無 CDN）
+- 離線、繁體中文 UI
 
 ## 限制
 
-- 圖集由程序像素繪製編成，仍不及手繪 Aseprite 細緻度
+- 角色為 clean minimal 風格，非手繪 Aseprite 高細節
 - 非完整課程系統，僅氣氛／導覽場景
 - 無存檔、無音效、無多人
