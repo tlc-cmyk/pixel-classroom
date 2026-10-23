@@ -174,7 +174,7 @@
 <body>
 <div id="wrap">
 <canvas id="game" width="360" height="640"></canvas>
-<div id="rotateHint">橫放手機可睇更清楚課桌</div>
+<div id="rotateHint">直式全螢幕 · 大角色／大書枱</div>
 <div id="dpad" aria-hidden="true">
   <div class="btn up" data-dir="up">▲</div>
   <div class="btn left" data-dir="left">◀</div>
@@ -184,7 +184,7 @@
 </div>
 <div id="actions" aria-hidden="true">
   <button type="button" class="abtn close" id="btnClose" title="關閉"><span class="ico">✕</span><span>關閉</span></button>
-  <button type="button" class="abtn" id="btnAct" title="互動"><span class="ico">✦</span><span>互動</span></button>
+  <button type="button" class="abtn" id="btnAct" title="點名／互動"><span class="ico">✦</span><span>點名</span></button>
 </div>
 </div>
 <script>
@@ -199,6 +199,43 @@
   const atlas = new Image();
   let atlasReady = false;
 
+  /* —— Web Audio SFX (no CDN) —— */
+  let actx = null;
+  let walkCool = 0;
+  function ensureAudio() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!actx) actx = new AC();
+    if (actx.state === "suspended") actx.resume();
+    return actx;
+  }
+  function tone(freq, dur, type, vol, slideTo) {
+    const a = ensureAudio();
+    if (!a) return;
+    const t0 = a.currentTime;
+    const o = a.createOscillator();
+    const g = a.createGain();
+    o.type = type || "square";
+    o.frequency.setValueAtTime(freq, t0);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(40, slideTo), t0 + dur);
+    g.gain.setValueAtTime(Math.max(0.0001, vol || 0.04), t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(t0); o.stop(t0 + dur + 0.02);
+  }
+  const SFX = {
+    walk() {
+      if (walkCool > 0) return;
+      walkCool = 14;
+      tone(110 + Math.random() * 30, 0.045, "triangle", 0.018);
+    },
+    interact() { tone(520, 0.08, "square", 0.045); setTimeout(() => tone(780, 0.07, "square", 0.035), 50); },
+    open() { tone(340, 0.09, "square", 0.04, 680); },
+    close() { tone(520, 0.08, "square", 0.035, 220); },
+    toggle() { tone(440, 0.06, "triangle", 0.04); setTimeout(() => tone(660, 0.08, "triangle", 0.035), 40); },
+    greet() { tone(523, 0.07, "sine", 0.05); setTimeout(() => tone(659, 0.09, "sine", 0.045), 70); setTimeout(() => tone(784, 0.12, "sine", 0.04), 150); },
+  };
+
   function blitSized(name, dx, dy, dw, dh, flipX) {
     const s = SPR[name];
     if (!s || !atlasReady) return;
@@ -212,19 +249,6 @@
       ctx.restore();
     } else {
       ctx.drawImage(atlas, s.x, s.y, s.w, s.h, x, y, w, h);
-    }
-  }
-  function blitTiled(name, dx, dy, dw, dh) {
-    const s = SPR[name];
-    if (!s || !atlasReady) return;
-    const x0 = (dx + 0.5) | 0, y0 = (dy + 0.5) | 0;
-    const x1 = x0 + ((dw + 0.5) | 0), y1 = y0 + ((dh + 0.5) | 0);
-    for (let y = y0; y < y1; y += s.h) {
-      for (let x = x0; x < x1; x += s.w) {
-        const tw = Math.min(s.w, x1 - x);
-        const th = Math.min(s.h, y1 - y);
-        ctx.drawImage(atlas, s.x, s.y, tw, th, x, y, tw, th);
-      }
     }
   }
 
@@ -247,6 +271,8 @@
     zoneTint2: "rgba(50,110,180,0.10)",
     zoneLabel: "#1a2438",
     overlay: "rgba(10,14,22,0.88)",
+    present: "#3ecf8e",
+    absent: "#e07070",
   };
 
   const STATE = { TITLE: 0, PLAY: 1 };
@@ -255,19 +281,33 @@
   let panel = null;
   let highlightZone = -1;
   let highlightTimer = 0;
+  let nearestStudent = null;
+  let greetBubble = null; /* {x,y,text,life} */
 
   const BAR_H = 52;
   const TOP_H = 28;
 
-  /* Classroom world — portrait 360 wide, scrollable height */
-  const ROOM = { x: 0, y: TOP_H, w: 360, h: 470 };
-
-  /* 4×4 desk grid with center aisle */
-  const DESK_W = 68, DESK_H = 52;
-  const COL_X = [18, 92, 200, 274];
-  const ROW_Y = [128, 192, 256, 320];
+  /* Bigger desks / characters for phone portrait readability */
+  const ROOM = { x: 0, y: TOP_H, w: 360, h: 540 };
+  const DESK_W = 78, DESK_H = 60;
+  const COL_X = [6, 88, 194, 276];
+  const ROW_Y = [118, 198, 278, 358];
   const SPRITE_CYCLE = ["student0", "student1", "student4", "student2", "student3", "student5"];
   const CHAIR_CYCLE = ["chair0", "chair1", "chair2", "chair3", "chair4", "chair5"];
+  const STUDENT_NAMES = [
+    "陳嘉怡", "李俊傑", "黃詩敏", "張家豪",
+    "林婉婷", "吳志明", "鄭欣怡", "劉偉強",
+    "周美玲", "何文傑", "梁芷晴", "蔡子軒",
+    "謝詠詩", "馮浩然", "葉心怡", "馬啟聰"
+  ];
+  const GREETINGS = [
+    "早晨！準備好上 ICT 未？",
+    "老師好～今日學 SELECT！",
+    "有問題想問！",
+    "我做好功課喇。",
+    "可唔可以再講一次 WHERE？",
+    "今日精神十足！"
+  ];
 
   const desks = [];
   for (let r = 0; r < 4; r++) {
@@ -285,43 +325,40 @@
     }
   }
 
-  const teacherDesk = { x: 130, y: 78, w: 100, h: 36 };
+  const teacherDesk = { x: 118, y: 74, w: 124, h: 40 };
 
   const zones = [
     {
       id: 0, name: "講台", key: "1",
-      x: 40, y: TOP_H + 4, w: 280, h: 88,
-      info: "白板講解 · 今日課題：數據庫基礎（SELECT／WHERE）· 老師可喺度行嚟行去",
+      x: 30, y: TOP_H + 4, w: 300, h: 90,
+      info: "白板講解 · 今日課題：數據庫基礎（SELECT／WHERE）· 走近同學按 E／點名可點名",
       color: C.zoneTint1,
     },
     {
       id: 1, name: "課室座位", key: "2",
-      x: 10, y: 120, w: 340, h: 270,
-      info: "4×4 座位 · 16 位同學 · 請沿走道巡堂，唔好撞到書枱",
+      x: 4, y: 112, w: 352, h: 320,
+      info: "4×4 大書枱 · 16 位同學 · 走近同學點名／打招呼",
       color: C.zoneTint2,
     },
   ];
 
   const solids = [];
-  /* Front props */
-  solids.push({ x: 8, y: TOP_H + 36, w: 36, h: 40, kind: "prop" });       /* plant / window ledge L */
-  solids.push({ x: 316, y: TOP_H + 36, w: 36, h: 40, kind: "prop" });      /* plant R */
+  solids.push({ x: 8, y: TOP_H + 36, w: 36, h: 40, kind: "prop" });
+  solids.push({ x: 316, y: TOP_H + 36, w: 36, h: 40, kind: "prop" });
   solids.push({ x: teacherDesk.x, y: teacherDesk.y, w: teacherDesk.w, h: teacherDesk.h, kind: "desk" });
-  /* 16 student desks — collide with desk body (not full chair) */
   for (const d of desks) {
-    solids.push({ x: d.x + 4, y: d.y + 4, w: d.w - 8, h: 26, kind: "desk" });
+    solids.push({ x: d.x + 4, y: d.y + 6, w: d.w - 8, h: 28, kind: "desk" });
   }
-  /* Back shelf strip */
-  solids.push({ x: 12, y: 400, w: 70, h: 48, kind: "shelf" });
-  solids.push({ x: 278, y: 400, w: 70, h: 48, kind: "shelf" });
+  solids.push({ x: 12, y: 455, w: 70, h: 48, kind: "shelf" });
+  solids.push({ x: 278, y: 455, w: 70, h: 48, kind: "shelf" });
 
   const cam = { x: 0, y: 0, tx: 0, ty: 0 };
 
-  function charFootW(h) { return Math.max(14, (h * 0.42) | 0); }
+  function charFootW(h) { return Math.max(16, (h * 0.42) | 0); }
 
   const teacher = {
-    x: 168, y: 95,
-    drawH: 44, speed: 1.55,
+    x: 160, y: 90,
+    drawH: 54, speed: 1.6,
     facing: 0, state: "idle", animDist: 0, vx: 0, vy: 0,
     sprite: "teacher",
   };
@@ -330,28 +367,34 @@
 
   const students = desks.map((d, i) => {
     const spr = SPRITE_CYCLE[i % SPRITE_CYCLE.length];
-    const drawH = 32;
+    const drawH = 42;
     return {
-      x: d.x + 20,
-      y: d.y + 12,
+      x: d.x + 22,
+      y: d.y + 10,
       seated: true,
       drawH,
-      bob: i * 0.37,
-      facing: 3, /* face board (up) */
+      bob: i * 0.73,
+      facing: 3,
       state: "idle",
       animDist: 0,
       sprite: spr,
       w: charFootW(drawH),
       h: drawH,
       deskIndex: i,
+      name: STUDENT_NAMES[i],
+      present: true,
+      handRaise: 0,      /* frames remaining raised */
+      handCool: 80 + i * 37,
+      blink: 0,          /* frames remaining eyes closed */
+      blinkCool: 40 + (i * 29) % 90,
     };
   });
 
   const cat = {
-    x: 170, y: 380,
-    homeX: 170, homeY: 380,
-    tx: 170, ty: 380,
-    w: 24, h: 16, asleep: true, blink: 0, animDist: 0, facing: 2, state: "idle", speed: 0.6,
+    x: 168, y: 430,
+    homeX: 168, homeY: 430,
+    tx: 168, ty: 430,
+    w: 28, h: 18, asleep: true, blink: 0, animDist: 0, facing: 2, state: "idle", speed: 0.6,
   };
 
   const keys = Object.create(null);
@@ -359,6 +402,7 @@
   let isTouchUI = false;
   let startBtn = { x: 0, y: 0, w: 0, h: 0 };
   let closeBtn = { x: 0, y: 0, w: 0, h: 0 };
+  let panelBtns = []; /* interactive buttons inside student panel */
 
   function detectTouchUI() {
     isTouchUI = ("ontouchstart" in window) || (navigator.maxTouchPoints > 0) ||
@@ -374,7 +418,7 @@
       if (tall && state === STATE.PLAY) {
         hint.style.display = "block";
         clearTimeout(window.__rotateHintTimer);
-        window.__rotateHintTimer = setTimeout(() => { hint.style.display = "none"; }, 3500);
+        window.__rotateHintTimer = setTimeout(() => { hint.style.display = "none"; }, 2800);
       } else {
         hint.style.display = "none";
       }
@@ -384,18 +428,78 @@
   window.addEventListener("resize", detectTouchUI);
   window.addEventListener("orientationchange", detectTouchUI);
 
-  function beginPlay() { state = STATE.PLAY; detectTouchUI(); }
-  // Auto-start for preview / deep-link
+  function beginPlay() {
+    ensureAudio();
+    state = STATE.PLAY;
+    detectTouchUI();
+    SFX.open();
+  }
   if (/[?&]play=1\b/.test(location.search)) {
     setTimeout(beginPlay, 0);
   }
 
+  function presentCount() {
+    let n = 0;
+    for (const s of students) if (s.present) n++;
+    return n;
+  }
 
   function openPanelForZone(z) {
     const pw = Math.min(300, W - 24), ph = 130;
-    panel = { title: z.name, info: z.info, x: (W - pw) / 2, y: H - BAR_H - ph - 100, pw, ph };
+    panel = { kind: "zone", title: z.name, info: z.info, x: (W - pw) / 2, y: H - BAR_H - ph - 100, pw, ph };
+    panelBtns = [];
+    SFX.open();
   }
+
+  function openStudentPanel(st) {
+    const pw = Math.min(312, W - 20), ph = 178;
+    panel = {
+      kind: "student",
+      student: st,
+      title: st.name,
+      info: "座位 " + (st.deskIndex + 1) + " · 第 " + (Math.floor(st.deskIndex / 4) + 1) + " 行",
+      x: (W - pw) / 2,
+      y: H - BAR_H - ph - 88,
+      pw, ph,
+    };
+    panelBtns = [];
+    highlightZone = -1;
+    SFX.interact();
+  }
+
+  function findNearestStudent(maxDist) {
+    const cx = teacher.x + teacher.w / 2, cy = teacher.y + teacher.h / 2;
+    let best = null, bestD = 1e9;
+    for (const s of students) {
+      const sx = s.x + s.w / 2, sy = s.y + s.h / 2;
+      const d = Math.hypot(cx - sx, cy - sy);
+      if (d < bestD) { bestD = d; best = s; }
+    }
+    if (best && bestD <= (maxDist || 58)) return best;
+    return null;
+  }
+
+  function hitStudentWorld(wx, wy) {
+    /* tap near a seated student (generous hit box around desk) */
+    for (let i = students.length - 1; i >= 0; i--) {
+      const s = students[i];
+      const d = desks[s.deskIndex];
+      if (wx >= d.x - 4 && wx <= d.x + d.w + 4 && wy >= d.y - 8 && wy <= d.y + d.h + 8) {
+        /* also require teacher nearby for roll-call, unless already very close tap */
+        const near = findNearestStudent(70);
+        if (near === s || Math.hypot((teacher.x + teacher.w / 2) - (s.x + s.w / 2),
+            (teacher.y + teacher.h / 2) - (s.y + s.h / 2)) < 80) {
+          return s;
+        }
+      }
+    }
+    return null;
+  }
+
   function interactNearest() {
+    ensureAudio();
+    const st = findNearestStudent(62);
+    if (st) { openStudentPanel(st); return; }
     const cx = teacher.x + teacher.w / 2, cy = teacher.y + teacher.h / 2;
     let best = null, bestD = 1e9;
     for (const z of zones) {
@@ -408,12 +512,37 @@
     if (best && bestD < 180) { highlightZone = best.id; highlightTimer = 90; openPanelForZone(best); }
   }
 
+  function closePanel() {
+    if (panel) SFX.close();
+    panel = null;
+    highlightZone = -1;
+    panelBtns = [];
+  }
+
+  function togglePresent(st) {
+    st.present = !st.present;
+    SFX.toggle();
+  }
+
+  function doGreet(st) {
+    const msg = GREETINGS[(Math.random() * GREETINGS.length) | 0];
+    greetBubble = {
+      x: st.x + st.w / 2,
+      y: st.y - 4,
+      text: msg,
+      life: 120,
+    };
+    SFX.greet();
+    /* brief hand raise as acknowledgment */
+    st.handRaise = Math.max(st.handRaise, 50);
+  }
+
   window.addEventListener("keydown", (e) => {
     keys[e.code] = true;
     if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
     if (state === STATE.TITLE && (e.code === "Space" || e.code === "Enter")) { beginPlay(); return; }
     if (state !== STATE.PLAY) return;
-    if (e.code === "Escape") { panel = null; highlightZone = -1; return; }
+    if (e.code === "Escape") { closePanel(); return; }
     if (e.code === "KeyE" || e.code === "KeyF") { interactNearest(); return; }
     const numMap = { Digit1: 0, Digit2: 1, Numpad1: 0, Numpad2: 1 };
     if (e.code in numMap) {
@@ -443,14 +572,20 @@
   function screenToWorld(p) { return { x: p.x + cam.x, y: p.y + cam.y }; }
 
   function handlePointer(p) {
+    ensureAudio();
     if (state === STATE.TITLE) { beginPlay(); return; }
     if (panel) {
-      if (hitRect(p, closeBtn)) { panel = null; highlightZone = -1; return; }
+      if (hitRect(p, closeBtn)) { closePanel(); return; }
+      for (const b of panelBtns) {
+        if (hitRect(p, b)) { b.fn(); return; }
+      }
       const inside = p.x >= panel.x && p.x <= panel.x + panel.pw && p.y >= panel.y && p.y <= panel.y + panel.ph;
-      if (!inside) { panel = null; highlightZone = -1; }
+      if (!inside) closePanel();
       return;
     }
     const w = screenToWorld(p);
+    const st = hitStudentWorld(w.x, w.y);
+    if (st) { openStudentPanel(st); return; }
     const z = hitZone(w.x, w.y);
     if (z) { highlightZone = z.id; highlightTimer = 70; openPanelForZone(z); }
   }
@@ -474,6 +609,7 @@
       touchPad[dir] = on;
       const el = dpad.querySelector("[data-dir=" + dir + "]");
       if (el) el.classList.toggle("active", on);
+      if (on) ensureAudio();
     }
     dpad.querySelectorAll(".btn[data-dir]").forEach((el) => {
       const dir = el.getAttribute("data-dir");
@@ -496,10 +632,10 @@
     }
     press(document.getElementById("btnAct"), () => {
       if (state !== STATE.PLAY) return;
-      if (panel) { panel = null; highlightZone = -1; return; }
+      if (panel) { closePanel(); return; }
       interactNearest();
     });
-    press(document.getElementById("btnClose"), () => { panel = null; highlightZone = -1; });
+    press(document.getElementById("btnClose"), () => { closePanel(); });
   })();
 
   function rectsOverlap(a, b) {
@@ -541,8 +677,40 @@
       else teacher.facing = dy < 0 ? 3 : 0;
     }
     const moved = moveActor(teacher, teacher.vx, teacher.vy);
-    if (moved && (dx || dy)) { teacher.state = "walk"; teacher.animDist += Math.hypot(teacher.vx, teacher.vy); }
-    else teacher.state = "idle";
+    if (moved && (dx || dy)) {
+      teacher.state = "walk";
+      teacher.animDist += Math.hypot(teacher.vx, teacher.vy);
+      SFX.walk();
+    } else teacher.state = "idle";
+    nearestStudent = findNearestStudent(62);
+  }
+
+  function updateStudents() {
+    for (const s of students) {
+      /* idle bob phase advances in draw via frame + bob */
+      if (s.handRaise > 0) s.handRaise--;
+      else {
+        s.handCool--;
+        if (s.handCool <= 0 && s.present && Math.random() < 0.35) {
+          s.handRaise = 70 + ((Math.random() * 50) | 0);
+          s.handCool = 180 + ((Math.random() * 220) | 0);
+        } else if (s.handCool <= 0) {
+          s.handCool = 100 + ((Math.random() * 160) | 0);
+        }
+      }
+      if (s.blink > 0) s.blink--;
+      else {
+        s.blinkCool--;
+        if (s.blinkCool <= 0) {
+          s.blink = 5 + ((Math.random() * 4) | 0);
+          s.blinkCool = 70 + ((Math.random() * 140) | 0);
+        }
+      }
+    }
+    if (greetBubble) {
+      greetBubble.life--;
+      if (greetBubble.life <= 0) greetBubble = null;
+    }
   }
 
   function updateCat() {
@@ -590,17 +758,52 @@
   function drawChar(actor, yBob) {
     const facing = actor.facing | 0;
     const af = actor.seated ? 0 : walkFrame(actor);
-    const name = actor.seated ? (actor.sprite + "_sit") : (actor.sprite + "_" + facing + "_" + af);
+    /* hand raise: briefly use a side-facing walk frame as a gesture if seated */
+    let name;
+    if (actor.seated && actor.handRaise > 0) {
+      name = actor.sprite + "_2_1";
+      if (!SPR[name]) name = actor.sprite + "_sit";
+    } else {
+      name = actor.seated ? (actor.sprite + "_sit") : (actor.sprite + "_" + facing + "_" + af);
+    }
     const s = SPR[name] || SPR[actor.sprite + "_0_0"] || SPR[actor.sprite + "_sit"];
     if (!s) return;
     const dh = actor.drawH || 48;
+    const raiseLift = (actor.seated && actor.handRaise > 0) ? -3 : 0;
     const dw = (s.w * (dh / s.h) + 0.5) | 0;
-    blitSized(name, actor.x + (actor.w - dw) / 2, actor.y + (yBob || 0) - (dh - actor.h), dw, dh, false);
+    const dx = actor.x + (actor.w - dw) / 2;
+    const dy = actor.y + (yBob || 0) + raiseLift - (dh - actor.h);
+    blitSized(name, dx, dy, dw, dh, false);
+
+    /* blink overlay — thin dark line over approximate eye band */
+    if (actor.blink > 0 && actor.seated) {
+      const eyeY = dy + dh * 0.28;
+      const eyeW = dw * 0.42;
+      const eyeX = dx + (dw - eyeW) / 2;
+      ctx.fillStyle = "rgba(20,16,28,0.85)";
+      ctx.fillRect((eyeX + 0.5) | 0, (eyeY + 0.5) | 0, (eyeW + 0.5) | 0, 2);
+    }
+
+    /* raised-hand pixel flag above head */
+    if (actor.handRaise > 0 && actor.seated) {
+      const hx = dx + dw * 0.72;
+      const hy = dy - 2;
+      ctx.fillStyle = "#f0c14b";
+      ctx.fillRect((hx) | 0, (hy - 10) | 0, 4, 10);
+      ctx.fillRect((hx - 2) | 0, (hy - 12) | 0, 8, 4);
+      ctx.fillStyle = "#ffe08a";
+      ctx.fillRect((hx) | 0, (hy - 14) | 0, 4, 3);
+    }
+
+    /* absent tint */
+    if (actor.seated && actor.present === false) {
+      ctx.fillStyle = "rgba(40,20,30,0.45)";
+      ctx.fillRect((dx) | 0, (dy) | 0, dw, dh);
+    }
   }
 
   function drawFloor() {
     const x0 = ROOM.x, y0 = ROOM.y, w = ROOM.w, h = ROOM.h;
-    /* sky strip above wall */
     ctx.fillStyle = C.sky;
     ctx.fillRect(x0, y0, w, 22);
     ctx.fillStyle = C.skyCloud;
@@ -609,14 +812,12 @@
       ctx.fillRect(cx, y0 + 6, 18, 6);
       ctx.fillRect(cx + 4, y0 + 3, 10, 4);
     }
-    /* wall */
     ctx.fillStyle = C.wall;
     ctx.fillRect(x0, y0 + 20, w, 42);
     ctx.fillStyle = C.wallLine;
     for (let y = y0 + 26; y < y0 + 58; y += 7) ctx.fillRect(x0, y, w, 1);
     ctx.fillStyle = C.wallBase;
     ctx.fillRect(x0, y0 + 58, w, 4);
-    /* blue plank floor (Pixel Office style) */
     ctx.fillStyle = C.floorA;
     ctx.fillRect(x0, y0 + 62, w, h - 62);
     const plankH = 10;
@@ -631,62 +832,52 @@
   }
 
   function drawFrontWallProps() {
-    /* windows */
-    if (SPR.window0) blitSized("window0", 48, ROOM.y + 22, 42, 40);
-    if (SPR.window1) blitSized("window1", 270, ROOM.y + 22, 42, 40);
-    /* whiteboard */
-    if (SPR.board) blitSized("board", 100, ROOM.y + 24, 160, 40);
+    if (SPR.window0) blitSized("window0", 42, ROOM.y + 22, 48, 44);
+    if (SPR.window1) blitSized("window1", 270, ROOM.y + 22, 48, 44);
+    if (SPR.board) blitSized("board", 92, ROOM.y + 22, 176, 44);
     else {
       ctx.fillStyle = "#e8eef8";
-      ctx.fillRect(100, ROOM.y + 24, 160, 40);
+      ctx.fillRect(92, ROOM.y + 22, 176, 44);
       ctx.strokeStyle = "#8aa0c0";
-      ctx.strokeRect(100, ROOM.y + 24, 160, 40);
+      ctx.strokeRect(92, ROOM.y + 22, 176, 44);
     }
-    /* chalk text */
     ctx.fillStyle = "#c04040";
-    ctx.font = "bold 11px PingFang HK, Noto Sans TC, sans-serif";
+    ctx.font = "bold 12px PingFang HK, Noto Sans TC, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("中四 ICT · SELECT", 180, ROOM.y + 48);
-    /* door */
-    if (SPR.door) blitSized("door", 8, ROOM.y + 28, 32, 48);
-    /* plants */
+    if (SPR.door) blitSized("door", 6, ROOM.y + 26, 34, 52);
     if (SPR.plant) {
-      blitSized("plant", 318, ROOM.y + 30, 28, 36);
-      blitSized("plant", 70, ROOM.y + 34, 24, 30);
+      blitSized("plant", 316, ROOM.y + 28, 32, 40);
+      blitSized("plant", 66, ROOM.y + 32, 28, 34);
     } else if (SPR.kplant0) {
-      blitSized("kplant0", 320, ROOM.y + 28, 24, 40);
+      blitSized("kplant0", 320, ROOM.y + 28, 26, 42);
     }
-    /* teacher desk */
     if (SPR.table1) blitSized("table1", teacherDesk.x, teacherDesk.y, teacherDesk.w, teacherDesk.h);
     else if (SPR.table0) blitSized("table0", teacherDesk.x, teacherDesk.y, teacherDesk.w, teacherDesk.h);
-    if (SPR.monitor) blitSized("monitor", teacherDesk.x + 36, teacherDesk.y - 12, 26, 20);
+    if (SPR.monitor) blitSized("monitor", teacherDesk.x + 46, teacherDesk.y - 14, 32, 24);
   }
 
   function drawDesk(d) {
-    /* chair behind (toward bottom / larger Y) */
     const chairName = d.chair;
-    if (SPR[chairName]) blitSized(chairName, d.x + 20, d.y + 18, 22, 34);
-    /* desk / table */
+    if (SPR[chairName]) blitSized(chairName, d.x + 24, d.y + 22, 28, 40);
     const tname = SPR[d.table] ? d.table : (SPR.table0 ? "table0" : "k_table");
-    if (SPR[tname]) blitSized(tname, d.x + 2, d.y + 2, d.w - 4, 28);
-    /* monitor */
-    if (SPR.monitor) blitSized("monitor", d.x + 22, d.y - 2, 22, 18);
-    else if (SPR.office1) blitSized("office1", d.x + 20, d.y - 4, 26, 20);
+    if (SPR[tname]) blitSized(tname, d.x + 2, d.y + 4, d.w - 4, 34);
+    if (SPR.monitor) blitSized("monitor", d.x + 26, d.y - 4, 28, 22);
+    else if (SPR.office1) blitSized("office1", d.x + 24, d.y - 4, 30, 22);
   }
 
   function drawBackProps() {
-    if (SPR.bookshelf) blitSized("bookshelf", 14, 395, 55, 55);
-    else if (SPR.kshelf0) blitSized("kshelf0", 14, 400, 50, 48);
-    if (SPR.printer) blitSized("printer", 280, 405, 55, 42);
-    if (SPR.sofa1) blitSized("sofa1", 90, 410, 70, 32);
-    if (SPR.vending) blitSized("vending", 240, 395, 32, 52);
+    if (SPR.bookshelf) blitSized("bookshelf", 14, 450, 60, 58);
+    else if (SPR.kshelf0) blitSized("kshelf0", 14, 455, 54, 52);
+    if (SPR.printer) blitSized("printer", 278, 460, 60, 46);
+    if (SPR.sofa1) blitSized("sofa1", 90, 465, 78, 36);
+    if (SPR.vending) blitSized("vending", 236, 448, 36, 58);
   }
 
   function drawWorld() {
     drawFloor();
     drawFrontWallProps();
 
-    /* subtle zone tints + labels */
     for (const z of zones) {
       ctx.fillStyle = z.color;
       ctx.fillRect(z.x, z.y, z.w, z.h);
@@ -702,10 +893,7 @@
       ctx.fillText(z.name, z.x + 7, z.y + 14);
     }
 
-    /* desks under actors (actors drawn later with Y-sort) — chairs/tables only;
-       students drawn in drawActors so they Y-sort with teacher */
     for (const d of desks) drawDesk(d);
-
     drawBackProps();
   }
 
@@ -721,8 +909,43 @@
         if (SPR[nm]) blitSized(nm, cat.x, cat.y + (cat.asleep ? 1 : 0), cat.w, cat.h);
         continue;
       }
-      const bob = item.ref.seated ? Math.sin(frame * 0.05 + (item.ref.bob || 0)) * 0.4 : 0;
+      /* stronger idle bob for seated students */
+      const bob = item.ref.seated
+        ? Math.sin(frame * 0.07 + (item.ref.bob || 0)) * 1.35
+        : 0;
       drawChar(item.ref, bob);
+
+      /* proximity prompt */
+      if (item.kind === "s" && nearestStudent === item.ref && !panel) {
+        const s = item.ref;
+        const px = s.x + s.w / 2;
+        const py = s.y - 6 + bob;
+        ctx.fillStyle = "rgba(26,36,56,0.92)";
+        ctx.fillRect((px - 28) | 0, (py - 16) | 0, 56, 14);
+        ctx.strokeStyle = C.uiAccent;
+        ctx.lineWidth = 1;
+        ctx.strokeRect((px - 28) | 0, (py - 16) | 0, 56, 14);
+        ctx.fillStyle = C.uiAccent;
+        ctx.font = "bold 9px PingFang HK, Noto Sans TC, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(isTouchUI ? "點名 ✦" : "E 點名", px, py - 5);
+      }
+    }
+
+    if (greetBubble) {
+      const bx = greetBubble.x - cam.x; /* drawn in world space already via translate */
+      void bx;
+      const tx = greetBubble.x;
+      const ty = greetBubble.y - (120 - greetBubble.life) * 0.15;
+      const tw = Math.min(160, greetBubble.text.length * 11 + 16);
+      ctx.fillStyle = "rgba(255,252,240,0.95)";
+      roundRect(tx - tw / 2, ty - 28, tw, 24, 6); ctx.fill();
+      ctx.strokeStyle = "#c49a6c"; ctx.lineWidth = 2;
+      roundRect(tx - tw / 2, ty - 28, tw, 24, 6); ctx.stroke();
+      ctx.fillStyle = "#1a2030";
+      ctx.font = "10px PingFang HK, Noto Sans TC, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(greetBubble.text, tx, ty - 12);
     }
   }
 
@@ -756,7 +979,7 @@
     ctx.fillText("像素課室 · 中四 ICT", 10, 18);
     ctx.textAlign = "right";
     ctx.fillStyle = C.uiDim;
-    ctx.fillText("4×4 · 16 位", W - 10, 18);
+    ctx.fillText("出席 " + presentCount() + "/16", W - 10, 18);
 
     ctx.fillStyle = C.uiPanel;
     ctx.fillRect(0, H - BAR_H, W, BAR_H);
@@ -766,7 +989,7 @@
     ctx.font = "11px PingFang HK, Noto Sans TC, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText(
-      isTouchUI ? "虛擬方向鍵移動老師 · 右下互動" : "WASD／方向鍵移動老師 · E 互動 · 1–2 區域",
+      isTouchUI ? "走近同學 · 右下「點名」或點學生" : "走近同學 · E 點名 · WASD 移動 · Esc 關閉",
       W / 2, H - BAR_H + 26
     );
 
@@ -780,7 +1003,39 @@
       ctx.fillText(panel.title, panel.x + 16, panel.y + 28);
       ctx.fillStyle = C.ui;
       ctx.font = "13px PingFang HK, Noto Sans TC, sans-serif";
-      wrapText(panel.info, panel.x + 16, panel.y + 54, panel.pw - 32, 18);
+      wrapText(panel.info, panel.x + 16, panel.y + 52, panel.pw - 32, 18);
+
+      panelBtns = [];
+      if (panel.kind === "student" && panel.student) {
+        const st = panel.student;
+        const status = st.present ? "出席 Present" : "缺席 Absent";
+        ctx.fillStyle = st.present ? C.present : C.absent;
+        ctx.font = "bold 13px PingFang HK, Noto Sans TC, sans-serif";
+        ctx.fillText(status, panel.x + 16, panel.y + 88);
+
+        const bw = (panel.pw - 44) / 2;
+        const by = panel.y + panel.ph - 48;
+        const b1 = { x: panel.x + 14, y: by, w: bw, h: 34, fn: () => togglePresent(st) };
+        const b2 = { x: panel.x + 22 + bw, y: by, w: bw, h: 34, fn: () => { doGreet(st); closePanel(); } };
+        panelBtns.push(b1, b2);
+
+        ctx.fillStyle = st.present ? "#5a3040" : "#2a5040";
+        roundRect(b1.x, b1.y, b1.w, b1.h, 8); ctx.fill();
+        ctx.strokeStyle = st.present ? C.absent : C.present;
+        ctx.lineWidth = 2; roundRect(b1.x, b1.y, b1.w, b1.h, 8); ctx.stroke();
+        ctx.fillStyle = "#fff8ee";
+        ctx.font = "bold 12px PingFang HK, Noto Sans TC, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(st.present ? "改為缺席" : "改為出席", b1.x + b1.w / 2, b1.y + 22);
+
+        ctx.fillStyle = "#3a4a28";
+        roundRect(b2.x, b2.y, b2.w, b2.h, 8); ctx.fill();
+        ctx.strokeStyle = C.uiAccent;
+        roundRect(b2.x, b2.y, b2.w, b2.h, 8); ctx.stroke();
+        ctx.fillStyle = "#fff8ee";
+        ctx.fillText("打招呼", b2.x + b2.w / 2, b2.y + 22);
+      }
+
       closeBtn = { x: panel.x + panel.pw - 44, y: panel.y + 10, w: 32, h: 28 };
       ctx.fillStyle = "#c87858"; ctx.fillRect(closeBtn.x, closeBtn.y, closeBtn.w, closeBtn.h);
       ctx.fillStyle = "#fff"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center";
@@ -790,10 +1045,8 @@
 
   function drawTitle() {
     ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
-    /* preview classroom behind title */
     ctx.save();
     ctx.translate(0, 40);
-    ctx.scale(1, 1);
     drawFloor();
     drawFrontWallProps();
     for (const d of desks) drawDesk(d);
@@ -812,7 +1065,7 @@
     ctx.fillText("上課，像玩遊戲一樣", W / 2, 86);
     ctx.fillStyle = C.uiDim;
     ctx.font = "12px PingFang HK, Noto Sans TC, sans-serif";
-    ctx.fillText("4×4 座位 · 16 同學 · 你係老師", W / 2, 110);
+    ctx.fillText("大角色 · 點名 · 音效 · 16 同學", W / 2, 110);
     startBtn = { x: W / 2 - 90, y: H - 100, w: 180, h: 52 };
     ctx.fillStyle = C.uiAccent;
     roundRect(startBtn.x, startBtn.y, startBtn.w, startBtn.h, 14); ctx.fill();
@@ -823,10 +1076,11 @@
 
   function tick() {
     frame++;
+    if (walkCool > 0) walkCool--;
     if (highlightTimer > 0) highlightTimer--;
     else if (!panel) highlightZone = -1;
     if (state === STATE.PLAY) {
-      updateTeacher(); updateCat(); updateCamera();
+      updateTeacher(); updateStudents(); updateCat(); updateCamera();
     }
     ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
     if (state === STATE.TITLE) drawTitle();
