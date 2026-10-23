@@ -8,13 +8,21 @@
 
 直接用瀏覽器開啟 `index.html`（離線單檔，無需伺服器／CDN）。
 
-GitHub Pages（推送後）：https://tlc-cmyk.github.io/pixel-classroom/
+GitHub Pages：https://tlc-cmyk.github.io/pixel-classroom/
 
 ## 畫布
 
 - 邏輯解析度：**640 × 360**
-- CSS 放大約 2×，`image-rendering: pixelated` + `imageSmoothingEnabled = false`
-- 全部程序化像素精靈，無外部圖片
+- CSS 約 2× 放大，`image-rendering: pixelated` + `imageSmoothingEnabled = false`
+- 全部程序化像素精靈（地板紋理、窗戶視差、家具、角色、小貓），無外部圖片／CDN
+
+## 場景密度
+
+- 木紋地板（錯縫／色差）、牆腳線、門、三扇窗戶（天空＋雲＋草木視差）
+- 白板粉筆字、海報、地毯討論區、圓桌、書架書籍、儲物櫃、盆栽
+- 9 張電腦桌（螢幕／鍵盤／滑鼠／椅）、講桌（茶杯＋文件）
+- 老師多色精靈（四面朝向）；7 位坐下學生 + 1 位討論區走動；小貓會偶爾走動
+- 溫暖窗光＋暗角 vignette
 
 ## 操作
 
@@ -30,19 +38,19 @@ GitHub Pages（推送後）：https://tlc-cmyk.github.io/pixel-classroom/
 
 1. **講授區** — 白板、講解
 2. **電腦區** — 學生電腦桌、SBA／練習進度
-3. **討論區** — 小組圓桌
+3. **討論區** — 地毯＋小組圓桌
 4. **儲物區** — 書架與櫃
 
-底部 UI：目前節次（中四 ICT）與「進行中任務」晶片。
+底部 UI：節次（中四 ICT）與「進行中任務」晶片。
 
 ## 技術備註
 
 - 單一 `index.html`，適合 GitHub Pages 根目錄部署
 - 簡易矩形碰撞（牆／桌／架）
-- 學生有坐下與慢走兩種；桌上可選小貓
+- 離線、無 CDN、繁體中文 UI
 
 ## 限制
 
-- 非完整課程系統，僅氣氛／導覽原型
+- 非完整課程系統，僅氣氛／導覽場景
 - 無存檔、無音效、無多人
 - 觸控僅支援點擊區域；移動仍以鍵盤為主
