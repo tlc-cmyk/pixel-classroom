@@ -1,0 +1,6 @@
+.DS_Store
+*.pyc
+__pycache__/
+_css_snip.html
+assets/_*.png
+assets/chrome-*.png
