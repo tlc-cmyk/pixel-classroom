@@ -20,3 +20,7 @@ All third-party art below is **CC0 (Public Domain)** and may be redistributed in
 - Used for: monitors, cabinets, books, notice-board style props
 
 Attribution is **not required** by CC0 but gratefully given here.
+
+## Local processing
+- Characters upscaled 4× (nearest) with 1px outline; hair/shirt recolors for student variety (still CC0 source art).
+- Student desks composed from Pixel Office chairs/tables + CRT-style monitors painted in the same palette, with soft ground shadows.

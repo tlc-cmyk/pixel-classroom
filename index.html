@@ -252,6 +252,16 @@
     }
   }
 
+  /** Soft elliptical ground shadow (world space). */
+  function drawShadow(cx, cy, rw, rh, alpha) {
+    ctx.save();
+    ctx.fillStyle = "rgba(18,22,36," + (alpha == null ? 0.38 : alpha) + ")";
+    ctx.beginPath();
+    ctx.ellipse((cx + 0.5) | 0, (cy + 0.5) | 0, Math.max(4, rw), Math.max(2, rh), 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   const C = {
     bg: "#121820",
     sky: "#4aa0e8",
@@ -287,13 +297,14 @@
   const BAR_H = 52;
   const TOP_H = 28;
 
-  /* Bigger desks / characters for phone portrait readability */
+  /* HQ desks / characters — Pixel Office CC0, phone portrait readable */
   const ROOM = { x: 0, y: TOP_H, w: 360, h: 540 };
-  const DESK_W = 78, DESK_H = 60;
-  const COL_X = [6, 88, 194, 276];
-  const ROW_Y = [118, 198, 278, 358];
+  const DESK_W = 82, DESK_H = 64;
+  const COL_X = [4, 86, 192, 274];
+  const ROW_Y = [116, 198, 280, 362];
   const SPRITE_CYCLE = ["student0", "student1", "student4", "student2", "student3", "student5"];
   const CHAIR_CYCLE = ["chair0", "chair1", "chair2", "chair3", "chair4", "chair5"];
+  const DESK_UNIT_CYCLE = ["desk_unit0","desk_unit1","desk_unit2","desk_unit3","desk_unit4","desk_unit5","desk_unit6","desk_unit7"];
   const STUDENT_NAMES = [
     "陳嘉怡", "李俊傑", "黃詩敏", "張家豪",
     "林婉婷", "吳志明", "鄭欣怡", "劉偉強",
@@ -321,11 +332,12 @@
         h: DESK_H,
         chair: CHAIR_CYCLE[i % CHAIR_CYCLE.length],
         table: "table0",
+        unit: DESK_UNIT_CYCLE[i % DESK_UNIT_CYCLE.length],
       });
     }
   }
 
-  const teacherDesk = { x: 118, y: 74, w: 124, h: 40 };
+  const teacherDesk = { x: 110, y: 70, w: 140, h: 48 };
 
   const zones = [
     {
@@ -347,7 +359,7 @@
   solids.push({ x: 316, y: TOP_H + 36, w: 36, h: 40, kind: "prop" });
   solids.push({ x: teacherDesk.x, y: teacherDesk.y, w: teacherDesk.w, h: teacherDesk.h, kind: "desk" });
   for (const d of desks) {
-    solids.push({ x: d.x + 4, y: d.y + 6, w: d.w - 8, h: 28, kind: "desk" });
+    solids.push({ x: d.x + 6, y: d.y + 10, w: d.w - 12, h: 30, kind: "desk" });
   }
   solids.push({ x: 12, y: 455, w: 70, h: 48, kind: "shelf" });
   solids.push({ x: 278, y: 455, w: 70, h: 48, kind: "shelf" });
@@ -358,7 +370,7 @@
 
   const teacher = {
     x: 160, y: 90,
-    drawH: 54, speed: 1.6,
+    drawH: 58, speed: 1.6,
     facing: 0, state: "idle", animDist: 0, vx: 0, vy: 0,
     sprite: "teacher",
   };
@@ -367,10 +379,10 @@
 
   const students = desks.map((d, i) => {
     const spr = SPRITE_CYCLE[i % SPRITE_CYCLE.length];
-    const drawH = 42;
+    const drawH = 46;
     return {
-      x: d.x + 22,
-      y: d.y + 10,
+      x: d.x + 26,
+      y: d.y + 8,
       seated: true,
       drawH,
       bob: i * 0.73,
@@ -773,6 +785,8 @@
     const dw = (s.w * (dh / s.h) + 0.5) | 0;
     const dx = actor.x + (actor.w - dw) / 2;
     const dy = actor.y + (yBob || 0) + raiseLift - (dh - actor.h);
+    /* ground shadow under feet */
+    drawShadow(dx + dw / 2, dy + dh - 2, dw * 0.42, Math.max(3, dh * 0.08), actor.seated ? 0.32 : 0.40);
     blitSized(name, dx, dy, dw, dh, false);
 
     /* blink overlay — thin dark line over approximate eye band */
@@ -852,26 +866,43 @@
     } else if (SPR.kplant0) {
       blitSized("kplant0", 320, ROOM.y + 28, 26, 42);
     }
-    if (SPR.table1) blitSized("table1", teacherDesk.x, teacherDesk.y, teacherDesk.w, teacherDesk.h);
-    else if (SPR.table0) blitSized("table0", teacherDesk.x, teacherDesk.y, teacherDesk.w, teacherDesk.h);
-    if (SPR.monitor) blitSized("monitor", teacherDesk.x + 46, teacherDesk.y - 14, 32, 24);
+    drawShadow(teacherDesk.x + teacherDesk.w / 2, teacherDesk.y + teacherDesk.h - 2, teacherDesk.w * 0.42, 7, 0.34);
+    if (SPR.teacher_desk) {
+      blitSized("teacher_desk", teacherDesk.x, teacherDesk.y - 10, teacherDesk.w, teacherDesk.h + 14);
+    } else {
+      if (SPR.table1) blitSized("table1", teacherDesk.x, teacherDesk.y, teacherDesk.w, teacherDesk.h);
+      else if (SPR.table0) blitSized("table0", teacherDesk.x, teacherDesk.y, teacherDesk.w, teacherDesk.h);
+      if (SPR.monitor) blitSized("monitor", teacherDesk.x + 50, teacherDesk.y - 16, 36, 28);
+    }
   }
 
   function drawDesk(d) {
+    const unit = d.unit && SPR[d.unit] ? d.unit : null;
+    if (unit) {
+      /* composed HQ desk: chair + table + CRT + props + baked shadow */
+      blitSized(unit, d.x - 2, d.y - 8, d.w + 4, d.h + 4);
+      return;
+    }
+    drawShadow(d.x + d.w / 2, d.y + d.h - 6, d.w * 0.4, 6, 0.30);
     const chairName = d.chair;
-    if (SPR[chairName]) blitSized(chairName, d.x + 24, d.y + 22, 28, 40);
+    if (SPR[chairName]) blitSized(chairName, d.x + 26, d.y + 20, 30, 42);
     const tname = SPR[d.table] ? d.table : (SPR.table0 ? "table0" : "k_table");
-    if (SPR[tname]) blitSized(tname, d.x + 2, d.y + 4, d.w - 4, 34);
-    if (SPR.monitor) blitSized("monitor", d.x + 26, d.y - 4, 28, 22);
+    if (SPR[tname]) blitSized(tname, d.x + 2, d.y + 6, d.w - 4, 36);
+    if (SPR.monitor) blitSized("monitor", d.x + 24, d.y - 6, 34, 28);
     else if (SPR.office1) blitSized("office1", d.x + 24, d.y - 4, 30, 22);
   }
 
   function drawBackProps() {
-    if (SPR.bookshelf) blitSized("bookshelf", 14, 450, 60, 58);
+    drawShadow(44, 500, 28, 8, 0.28);
+    drawShadow(308, 498, 28, 8, 0.28);
+    drawShadow(130, 498, 34, 8, 0.26);
+    drawShadow(254, 500, 16, 8, 0.26);
+    if (SPR.bookshelf) blitSized("bookshelf", 14, 448, 62, 60);
     else if (SPR.kshelf0) blitSized("kshelf0", 14, 455, 54, 52);
-    if (SPR.printer) blitSized("printer", 278, 460, 60, 46);
-    if (SPR.sofa1) blitSized("sofa1", 90, 465, 78, 36);
-    if (SPR.vending) blitSized("vending", 236, 448, 36, 58);
+    if (SPR.printer) blitSized("printer", 276, 458, 62, 48);
+    if (SPR.sofa1) blitSized("sofa1", 88, 462, 80, 38);
+    else if (SPR.sofa0) blitSized("sofa0", 88, 462, 80, 38);
+    if (SPR.vending) blitSized("vending", 234, 446, 38, 60);
   }
 
   function drawWorld() {
@@ -906,7 +937,9 @@
     for (const item of list) {
       if (item.kind === "c") {
         const nm = cat.facing === 1 ? "cat_flip" : "cat";
+        drawShadow(cat.x + cat.w / 2, cat.y + cat.h - 1, cat.w * 0.45, 4, 0.30);
         if (SPR[nm]) blitSized(nm, cat.x, cat.y + (cat.asleep ? 1 : 0), cat.w, cat.h);
+        else if (SPR.cat) blitSized("cat", cat.x, cat.y, cat.w, cat.h);
         continue;
       }
       /* stronger idle bob for seated students */

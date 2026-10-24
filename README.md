@@ -18,7 +18,7 @@ GitHub Pages：https://tlc-cmyk.github.io/pixel-classroom/
 - CSS：`100vw` × `100dvh`／`100svh`，含 `safe-area-inset`
 - 桌面寬螢幕：居中直式機框預覽
 - 圖集：`assets/atlas.png` + `assets/atlas.json`（本地載入，無 CDN）
-- **放大書枱／角色**：課桌約 78×60、學生高 42、老師高 54，直式更易讀
+- **放大書枱／角色**：課桌約 82×64（組合 CRT 枱）、學生高 46、老師高 58；陰影／描邊加強
 
 ## 課室佈局（4×4）
 
