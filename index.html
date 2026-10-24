@@ -297,12 +297,14 @@
   const BAR_H = 52;
   const TOP_H = 28;
 
-  /* HQ desks / characters — Pixel Office CC0, phone portrait readable */
+  /* Clean 4×4 grid · poster school uniforms (male/female alternate) */
   const ROOM = { x: 0, y: TOP_H, w: 360, h: 540 };
-  const DESK_W = 82, DESK_H = 64;
-  const COL_X = [4, 86, 192, 274];
-  const ROW_Y = [116, 198, 280, 362];
-  const SPRITE_CYCLE = ["student0", "student1", "student4", "student2", "student3", "student5"];
+  const DESK_W = 72, DESK_H = 56;
+  /* two pairs + centre aisle — no overlapping desks */
+  const COL_X = [14, 92, 198, 276];
+  const ROW_Y = [124, 192, 260, 328];
+  /* student0 = male white+trousers; student1 = female white+plaid skirt/tie */
+  const SPRITE_CYCLE = ["student1", "student0"];
   const CHAIR_CYCLE = ["chair0", "chair1", "chair2", "chair3", "chair4", "chair5"];
   const DESK_UNIT_CYCLE = ["desk_unit0","desk_unit1","desk_unit2","desk_unit3","desk_unit4","desk_unit5","desk_unit6","desk_unit7"];
   const STUDENT_NAMES = [
@@ -337,19 +339,19 @@
     }
   }
 
-  const teacherDesk = { x: 110, y: 70, w: 140, h: 48 };
+  const teacherDesk = { x: 120, y: 74, w: 120, h: 40 };
 
   const zones = [
     {
       id: 0, name: "講台", key: "1",
-      x: 30, y: TOP_H + 4, w: 300, h: 90,
+      x: 28, y: TOP_H + 4, w: 304, h: 86,
       info: "白板講解 · 今日課題：數據庫基礎（SELECT／WHERE）· 走近同學按 E／點名可點名",
       color: C.zoneTint1,
     },
     {
       id: 1, name: "課室座位", key: "2",
-      x: 4, y: 112, w: 352, h: 320,
-      info: "4×4 大書枱 · 16 位同學 · 走近同學點名／打招呼",
+      x: 8, y: 118, w: 344, h: 274,
+      info: "4×4 = 16 張書枱 · 校服男／女同學交替 · 走近點名／打招呼",
       color: C.zoneTint2,
     },
   ];
@@ -359,18 +361,18 @@
   solids.push({ x: 316, y: TOP_H + 36, w: 36, h: 40, kind: "prop" });
   solids.push({ x: teacherDesk.x, y: teacherDesk.y, w: teacherDesk.w, h: teacherDesk.h, kind: "desk" });
   for (const d of desks) {
-    solids.push({ x: d.x + 6, y: d.y + 10, w: d.w - 12, h: 30, kind: "desk" });
+    solids.push({ x: d.x + 6, y: d.y + 12, w: d.w - 12, h: 28, kind: "desk" });
   }
-  solids.push({ x: 12, y: 455, w: 70, h: 48, kind: "shelf" });
-  solids.push({ x: 278, y: 455, w: 70, h: 48, kind: "shelf" });
+  solids.push({ x: 12, y: 448, w: 64, h: 44, kind: "shelf" });
+  solids.push({ x: 284, y: 448, w: 64, h: 44, kind: "shelf" });
 
   const cam = { x: 0, y: 0, tx: 0, ty: 0 };
 
   function charFootW(h) { return Math.max(16, (h * 0.42) | 0); }
 
   const teacher = {
-    x: 160, y: 90,
-    drawH: 58, speed: 1.6,
+    x: 168, y: 88,
+    drawH: 54, speed: 1.6,
     facing: 0, state: "idle", animDist: 0, vx: 0, vy: 0,
     sprite: "teacher",
   };
@@ -379,10 +381,10 @@
 
   const students = desks.map((d, i) => {
     const spr = SPRITE_CYCLE[i % SPRITE_CYCLE.length];
-    const drawH = 46;
+    const drawH = 44;
     return {
-      x: d.x + 26,
-      y: d.y + 8,
+      x: d.x + (d.w - 22) / 2,
+      y: d.y + 6,
       seated: true,
       drawH,
       bob: i * 0.73,
@@ -403,10 +405,11 @@
   });
 
   const cat = {
-    x: 168, y: 430,
-    homeX: 168, homeY: 430,
-    tx: 168, ty: 430,
+    x: -80, y: -80,
+    homeX: -80, homeY: -80,
+    tx: -80, ty: -80,
     w: 28, h: 18, asleep: true, blink: 0, animDist: 0, facing: 2, state: "idle", speed: 0.6,
+    hidden: true,
   };
 
   const keys = Object.create(null);
@@ -845,6 +848,22 @@
     }
   }
 
+  function drawSimplePlant(x, y, h) {
+    /* procedural pot plant — avoids mislabeled atlas plant frames */
+    const potW = 14, potH = 10;
+    drawShadow(x + potW / 2, y + h - 1, potW * 0.55, 3, 0.28);
+    ctx.fillStyle = "#8b5a3c";
+    ctx.fillRect((x + 1) | 0, (y + h - potH) | 0, potW - 2, potH);
+    ctx.fillStyle = "#6e452e";
+    ctx.fillRect((x + 2) | 0, (y + h - 3) | 0, potW - 4, 3);
+    ctx.fillStyle = "#2f8f4e";
+    ctx.fillRect((x + 5) | 0, (y + 4) | 0, 4, h - potH - 2);
+    ctx.fillStyle = "#3cb86a";
+    ctx.fillRect((x + 1) | 0, (y + 2) | 0, 6, 8);
+    ctx.fillRect((x + 7) | 0, (y) | 0, 7, 7);
+    ctx.fillRect((x + 3) | 0, (y + 8) | 0, 8, 6);
+  }
+
   function drawFrontWallProps() {
     if (SPR.window0) blitSized("window0", 42, ROOM.y + 22, 48, 44);
     if (SPR.window1) blitSized("window1", 270, ROOM.y + 22, 48, 44);
@@ -859,13 +878,8 @@
     ctx.font = "bold 12px PingFang HK, Noto Sans TC, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("中四 ICT · SELECT", 180, ROOM.y + 48);
-    if (SPR.door) blitSized("door", 6, ROOM.y + 26, 34, 52);
-    if (SPR.plant) {
-      blitSized("plant", 316, ROOM.y + 28, 32, 40);
-      blitSized("plant", 66, ROOM.y + 32, 28, 34);
-    } else if (SPR.kplant0) {
-      blitSized("kplant0", 320, ROOM.y + 28, 26, 42);
-    }
+    drawSimplePlant(14, ROOM.y + 30, 40);
+    drawSimplePlant(318, ROOM.y + 30, 40);
     drawShadow(teacherDesk.x + teacherDesk.w / 2, teacherDesk.y + teacherDesk.h - 2, teacherDesk.w * 0.42, 7, 0.34);
     if (SPR.teacher_desk) {
       blitSized("teacher_desk", teacherDesk.x, teacherDesk.y - 10, teacherDesk.w, teacherDesk.h + 14);
@@ -893,16 +907,9 @@
   }
 
   function drawBackProps() {
-    drawShadow(44, 500, 28, 8, 0.28);
-    drawShadow(308, 498, 28, 8, 0.28);
-    drawShadow(130, 498, 34, 8, 0.26);
-    drawShadow(254, 500, 16, 8, 0.26);
-    if (SPR.bookshelf) blitSized("bookshelf", 14, 448, 62, 60);
-    else if (SPR.kshelf0) blitSized("kshelf0", 14, 455, 54, 52);
-    if (SPR.printer) blitSized("printer", 276, 458, 62, 48);
-    if (SPR.sofa1) blitSized("sofa1", 88, 462, 80, 38);
-    else if (SPR.sofa0) blitSized("sofa0", 88, 462, 80, 38);
-    if (SPR.vending) blitSized("vending", 234, 446, 38, 60);
+    /* sparse back row — procedural plants only (HQ plant/cat/shelf keys are mislabeled) */
+    drawSimplePlant(20, 450, 42);
+    drawSimplePlant(322, 450, 42);
   }
 
   function drawWorld() {
@@ -916,12 +923,12 @@
         ctx.fillStyle = C.highlight;
         ctx.fillRect(z.x, z.y, z.w, z.h);
       }
-      ctx.fillStyle = "rgba(255,255,255,0.85)";
-      ctx.fillRect(z.x + 4, z.y + 4, 56, 13);
+      ctx.fillStyle = "rgba(255,255,255,0.72)";
+      ctx.fillRect(z.x + 4, z.y + 3, 44, 11);
       ctx.fillStyle = C.zoneLabel;
-      ctx.font = "bold 10px PingFang HK, Noto Sans TC, sans-serif";
+      ctx.font = "bold 9px PingFang HK, Noto Sans TC, sans-serif";
       ctx.textAlign = "left";
-      ctx.fillText(z.name, z.x + 7, z.y + 14);
+      ctx.fillText(z.name, z.x + 7, z.y + 12);
     }
 
     for (const d of desks) drawDesk(d);
@@ -936,6 +943,7 @@
     list.sort((a, b) => a.y - b.y);
     for (const item of list) {
       if (item.kind === "c") {
+        if (cat.hidden) continue;
         const nm = cat.facing === 1 ? "cat_flip" : "cat";
         drawShadow(cat.x + cat.w / 2, cat.y + cat.h - 1, cat.w * 0.45, 4, 0.30);
         if (SPR[nm]) blitSized(nm, cat.x, cat.y + (cat.asleep ? 1 : 0), cat.w, cat.h);
