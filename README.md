@@ -18,7 +18,7 @@ GitHub Pages：https://tlc-cmyk.github.io/pixel-classroom/
 - CSS：`100vw` × `100dvh`／`100svh`，含 `safe-area-inset`
 - 桌面寬螢幕：居中直式機框預覽
 - 圖集：`assets/atlas.png` + `assets/atlas.json`（本地載入，無 CDN）
-- **書枱／角色**：課桌約 72×56（Pixel Office 組合 CRT 枱）、學生高 44、老師高 54；校服來自 IT 海報（男白恤衫西褲／女白恤衫格裙領帶）
+- **書枱／角色**：課桌約 78×62（Pixel Office 組合 CRT 枱）、學生高 64（圖集 1:1 繪製、2×2 眼睛更清晰）、老師高 58；校服來自 IT 海報（男白恤衫西褲／女白恤衫格裙領帶）
 
 ## 課室佈局（4×4）
 

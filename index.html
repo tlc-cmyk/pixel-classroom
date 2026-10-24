@@ -239,10 +239,12 @@
   function blitSized(name, dx, dy, dw, dh, flipX) {
     const s = SPR[name];
     if (!s || !atlasReady) return;
+    ctx.imageSmoothingEnabled = false;
     const x = (dx + 0.5) | 0, y = (dy + 0.5) | 0;
     const w = (dw + 0.5) | 0, h = (dh + 0.5) | 0;
     if (flipX) {
       ctx.save();
+      ctx.imageSmoothingEnabled = false;
       ctx.translate(x + w, y);
       ctx.scale(-1, 1);
       ctx.drawImage(atlas, s.x, s.y, s.w, s.h, 0, 0, w, h);
@@ -297,12 +299,12 @@
   const BAR_H = 52;
   const TOP_H = 28;
 
-  /* Clean 4×4 grid · poster school uniforms (male/female alternate) */
+  /* Clean 4×4 grid · larger uniform sprites drawn 1:1 at 64px */
   const ROOM = { x: 0, y: TOP_H, w: 360, h: 540 };
-  const DESK_W = 72, DESK_H = 56;
+  const DESK_W = 78, DESK_H = 62;
   /* two pairs + centre aisle — no overlapping desks */
-  const COL_X = [14, 92, 198, 276];
-  const ROW_Y = [124, 192, 260, 328];
+  const COL_X = [6, 90, 194, 278];
+  const ROW_Y = [118, 200, 282, 364];
   /* student0 = male white+trousers; student1 = female white+plaid skirt/tie */
   const SPRITE_CYCLE = ["student1", "student0"];
   const CHAIR_CYCLE = ["chair0", "chair1", "chair2", "chair3", "chair4", "chair5"];
@@ -350,7 +352,7 @@
     },
     {
       id: 1, name: "課室座位", key: "2",
-      x: 8, y: 118, w: 344, h: 274,
+      x: 4, y: 112, w: 352, h: 320,
       info: "4×4 = 16 張書枱 · 校服男／女同學交替 · 走近點名／打招呼",
       color: C.zoneTint2,
     },
@@ -363,8 +365,8 @@
   for (const d of desks) {
     solids.push({ x: d.x + 6, y: d.y + 12, w: d.w - 12, h: 28, kind: "desk" });
   }
-  solids.push({ x: 12, y: 448, w: 64, h: 44, kind: "shelf" });
-  solids.push({ x: 284, y: 448, w: 64, h: 44, kind: "shelf" });
+  solids.push({ x: 12, y: 456, w: 64, h: 40, kind: "shelf" });
+  solids.push({ x: 284, y: 456, w: 64, h: 40, kind: "shelf" });
 
   const cam = { x: 0, y: 0, tx: 0, ty: 0 };
 
@@ -372,7 +374,7 @@
 
   const teacher = {
     x: 168, y: 88,
-    drawH: 54, speed: 1.6,
+    drawH: 58, speed: 1.6,
     facing: 0, state: "idle", animDist: 0, vx: 0, vy: 0,
     sprite: "teacher",
   };
@@ -381,10 +383,12 @@
 
   const students = desks.map((d, i) => {
     const spr = SPRITE_CYCLE[i % SPRITE_CYCLE.length];
-    const drawH = 44;
+    /* native 64px atlas frames drawn 1:1 — ~45% taller than prior 44, crisper faces */
+    const drawH = 64;
+    const fw = charFootW(drawH);
     return {
-      x: d.x + (d.w - 22) / 2,
-      y: d.y + 6,
+      x: d.x + (d.w - fw) / 2,
+      y: d.y + DESK_H - drawH - 6,
       seated: true,
       drawH,
       bob: i * 0.73,
@@ -392,7 +396,7 @@
       state: "idle",
       animDist: 0,
       sprite: spr,
-      w: charFootW(drawH),
+      w: fw,
       h: drawH,
       deskIndex: i,
       name: STUDENT_NAMES[i],
@@ -908,8 +912,8 @@
 
   function drawBackProps() {
     /* sparse back row — procedural plants only (HQ plant/cat/shelf keys are mislabeled) */
-    drawSimplePlant(20, 450, 42);
-    drawSimplePlant(322, 450, 42);
+    drawSimplePlant(20, 458, 42);
+    drawSimplePlant(322, 458, 42);
   }
 
   function drawWorld() {

@@ -2,9 +2,10 @@
 """Rebuild school-uniform student sprites into assets/atlas.{png,json}.
 
 Keeps existing Pixel Office furniture / desk_unit tiles intact.
-Appends male (student0) + female (student1) uniform frames in a new strip:
+Appends male (student0) + female (student1) uniform frames:
   - male: short black hair, white shirt, school crest, charcoal trousers, belt
   - female: black ponytail, white shirt, plaid tie + navy/green/yellow skirt
+Faces use 2×2 eyes + highlight so they stay readable when drawn ~1:1 at 64px.
 
 Run from repo root:
   python3 tools/build_atlas.py
@@ -19,6 +20,8 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 ATLAS_PNG = ROOT / "assets" / "atlas.png"
 ATLAS_JSON = ROOT / "assets" / "atlas.json"
+
+MALE_W, FEM_W, CHAR_H = 40, 48, 64
 
 OUTLINE = (26, 28, 44, 255)
 SKIN = (255, 205, 117, 255)
@@ -41,10 +44,11 @@ PLAID_Y = (200, 180, 70, 255)
 TIE = (32, 70, 60, 255)
 MOUTH = (177, 62, 83, 255)
 EYE = (26, 28, 44, 255)
+EYE_HI = (248, 248, 252, 255)
 TRANSP = (0, 0, 0, 0)
 
 
-def blank(w: int = 40, h: int = 64) -> Image.Image:
+def blank(w: int = MALE_W, h: int = CHAR_H) -> Image.Image:
     return Image.new("RGBA", (w, h), TRANSP)
 
 
@@ -75,19 +79,26 @@ def draw_outline(src: Image.Image) -> Image.Image:
     return out
 
 
+def eyes(im: Image.Image, lx: int, ly: int, rx: int, ry: int) -> None:
+    """2×2 eyes with a 1px highlight — readable at 64px draw height."""
+    fill_rect(im, lx, ly, lx + 1, ly + 1, EYE)
+    fill_rect(im, rx, ry, rx + 1, ry + 1, EYE)
+    px(im, lx, ly, EYE_HI)
+    px(im, rx, ry, EYE_HI)
+
+
 def make_male(leg_off: int = 0, sit: bool = False) -> Image.Image:
-    im = blank(40, 64)
+    im = blank(MALE_W, CHAR_H)
     cx = 20
     fill_rect(im, cx - 7, 6, cx + 6, 18, SKIN)
     fill_rect(im, cx - 8, 4, cx + 7, 11, HAIR)
     fill_rect(im, cx - 8, 11, cx - 5, 16, HAIR)
     fill_rect(im, cx + 4, 11, cx + 7, 15, HAIR)
-    px(im, cx + 5, 5, HAIR_HI)
-    px(im, cx - 2, 5, HAIR_HI)
-    px(im, cx - 3, 13, EYE)
-    px(im, cx + 2, 13, EYE)
-    px(im, cx - 1, 16, MOUTH)
-    px(im, cx + 4, 15, SKIN_SH)
+    fill_rect(im, cx - 7, 5, cx - 5, 6, HAIR_HI)
+    fill_rect(im, cx + 3, 5, cx + 5, 6, HAIR_HI)
+    eyes(im, cx - 4, 12, cx + 1, 12)
+    fill_rect(im, cx - 1, 16, cx + 1, 16, MOUTH)
+    fill_rect(im, cx + 4, 15, cx + 5, 16, SKIN_SH)
     fill_rect(im, cx - 2, 19, cx + 1, 21, SKIN)
     fill_rect(im, cx - 8, 21, cx + 7, 36, WHITE)
     fill_rect(im, cx + 5, 22, cx + 7, 35, WHITE_SH)
@@ -145,7 +156,7 @@ def plaid_fill(im: Image.Image, x0: int, y0: int, x1: int, y1: int) -> None:
 
 
 def make_female(leg_off: int = 0, sit: bool = False) -> Image.Image:
-    im = blank(48, 64)
+    im = blank(FEM_W, CHAR_H)
     cx = 22
     fill_rect(im, cx - 7, 7, cx + 6, 19, SKIN)
     fill_rect(im, cx - 8, 4, cx + 7, 12, HAIR)
@@ -153,14 +164,11 @@ def make_female(leg_off: int = 0, sit: bool = False) -> Image.Image:
     fill_rect(im, cx + 4, 12, cx + 7, 17, HAIR)
     fill_rect(im, cx + 7, 8, cx + 12, 28, HAIR)
     fill_rect(im, cx + 8, 28, cx + 11, 34, HAIR)
-    px(im, cx + 9, 6, HAIR_HI)
-    px(im, cx - 3, 5, HAIR_HI)
-    px(im, cx - 7, 14, HAIR)
-    px(im, cx + 6, 15, HAIR)
-    px(im, cx - 3, 14, EYE)
-    px(im, cx + 2, 14, EYE)
-    px(im, cx - 1, 17, MOUTH)
-    px(im, cx + 4, 16, SKIN_SH)
+    fill_rect(im, cx + 8, 6, cx + 10, 7, HAIR_HI)
+    fill_rect(im, cx - 4, 5, cx - 2, 6, HAIR_HI)
+    eyes(im, cx - 4, 13, cx + 1, 13)
+    fill_rect(im, cx - 1, 17, cx + 1, 17, MOUTH)
+    fill_rect(im, cx + 4, 16, cx + 5, 17, SKIN_SH)
     fill_rect(im, cx - 2, 20, cx + 1, 22, SKIN)
     fill_rect(im, cx - 8, 22, cx + 7, 36, WHITE)
     fill_rect(im, cx + 5, 23, cx + 7, 35, WHITE_SH)
@@ -207,9 +215,9 @@ def gen_set(maker, prefix: str, pad_w: int) -> dict:
     frames = {}
 
     def pad(im: Image.Image) -> Image.Image:
-        if im.width == pad_w and im.height == 64:
+        if im.width == pad_w and im.height == CHAR_H:
             return im
-        out = blank(pad_w, 64)
+        out = blank(pad_w, CHAR_H)
         out.paste(im, ((pad_w - im.width) // 2, 0), im)
         return out
 
@@ -224,19 +232,18 @@ def gen_set(maker, prefix: str, pad_w: int) -> dict:
 
 
 def main() -> None:
-    male = gen_set(make_male, "student0", 40)
-    female = gen_set(make_female, "student1", 48)
+    male = gen_set(make_male, "student0", MALE_W)
+    female = gen_set(make_female, "student1", FEM_W)
 
     atlas = Image.open(ATLAS_PNG).convert("RGBA")
     SPR = json.loads(ATLAS_JSON.read_text())
 
-    # Drop previous uniform strip if re-run (keys already point into strip below original height)
-    base_h = 530  # original HQ atlas height before uniform strip
+    base_h = 530
     if atlas.height > base_h:
         atlas = atlas.crop((0, 0, atlas.width, base_h))
 
     aw, ah = atlas.size
-    row_h = 68
+    row_h = CHAR_H + 4
     new_atlas = Image.new("RGBA", (max(aw, 1600), ah + row_h * 2 + 8), TRANSP)
     new_atlas.paste(atlas, (0, 0))
 
